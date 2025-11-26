@@ -1,0 +1,108 @@
+{
+  "dataset_schema": {
+    "name": "location_recognizer_dataset",
+    "version": "1.0.0",
+    "description": "Reference image database for visual location recognition using ResNet50 feature extraction",
+    "license": "MIT"
+  },
+
+  "csv_schema": {
+    "description": "Dataset CSV format containing image filenames and GPS coordinates",
+    "required_columns": ["filename", "pano_id", "lat", "lng"],
+    "columns": {
+      "filename": {
+        "type": "string",
+        "description": "Image filename in the images directory",
+        "example": "image_00001.jpg"
+      },
+      "pano_id": {
+        "type": "string",
+        "description": "Panorama ID from source platform (e.g., Google Street View)",
+        "example": "CAoSF0NJSE0wb2dLRUlDQWdJQzM2T2I4eEFF"
+      },
+      "lat": {
+        "type": "float",
+        "description": "GPS latitude coordinate",
+        "range": [-90, 90],
+        "example": 24.57755644
+      },
+      "lng": {
+        "type": "float",
+        "description": "GPS longitude coordinate",
+        "range": [-180, 180],
+        "example": 46.58310402
+      }
+    }
+  },
+
+  "cache_schema": {
+    "description": "Pickled cache file structure for pre-computed feature vectors",
+    "format": "pickle",
+    "structure": {
+      "vectors": {
+        "type": "numpy.ndarray",
+        "shape": "(N, 2048)",
+        "dtype": "float32",
+        "description": "Pre-computed ResNet50 feature vectors for all reference images"
+      },
+      "metadata": {
+        "type": "list[dict]",
+        "description": "List of metadata dictionaries matching each feature vector",
+        "item_schema": {
+          "filename": {
+            "type": "string",
+            "description": "Reference image filename"
+          },
+          "lat": {
+            "type": "float",
+            "description": "GPS latitude"
+          },
+          "lng": {
+            "type": "float",
+            "description": "GPS longitude"
+          }
+        }
+      }
+    }
+  },
+
+  "model_output_schema": {
+    "description": "Output format from LocationRecognizer.find_location()",
+    "type": "dict",
+    "nullable": true,
+    "properties": {
+      "filename": {
+        "type": "string",
+        "description": "Matched reference image filename"
+      },
+      "lat": {
+        "type": "float",
+        "description": "Predicted GPS latitude"
+      },
+      "lng": {
+        "type": "float",
+        "description": "Predicted GPS longitude"
+      },
+      "confidence": {
+        "type": "float",
+        "range": [0, 1],
+        "description": "Cosine similarity score (higher is better)"
+      }
+    }
+  },
+
+  "model_config": {
+    "description": "Model configuration parameters",
+    "architecture": "ResNet50",
+    "pretrained_weights": "ImageNet",
+    "feature_dimension": 2048,
+    "similarity_metric": "cosine_similarity",
+    "preprocessing": {
+      "resize": 256,
+      "center_crop": 224,
+      "normalize_mean": [0.485, 0.456, 0.406],
+      "normalize_std": [0.229, 0.224, 0.225]
+    },
+    "default_confidence_threshold": 0.3
+  }
+}
