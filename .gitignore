@@ -8,6 +8,10 @@ ENV/
 .venv/
 
 .env
+frontend/.env
+backend/.env
+frontend/.env.development
+frontend/.env.production
 
 data/
 backend/temp_*
