@@ -3,8 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 import shutil
 import os
 import sys
+from pathlib import Path
 
-sys.path.append('..')
+# Get the project root directory (parent of backend/)
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+sys.path.append(str(BASE_DIR))
 from model import LocationRecognizer
 
 app = FastAPI()
@@ -18,9 +22,9 @@ app.add_middleware(
 )
 
 recognizer = LocationRecognizer(
-    csv_file='../data/dataset.csv',
-    image_folder='../data/images/',
-    cache_file='../database_cache.pkl'
+    csv_file=str(BASE_DIR / 'data' / 'dataset.csv'),
+    image_folder=str(BASE_DIR / 'data' / 'images/'),
+    cache_file=str(BASE_DIR / 'database_cache.pkl')
 )
 
 @app.post("/recognize")
