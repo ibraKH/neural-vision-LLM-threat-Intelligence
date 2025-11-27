@@ -10,7 +10,6 @@ ENV/
 .env
 
 data/
-database_cache.pkl
 backend/temp_*
 
 .vscode/
