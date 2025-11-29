@@ -15,6 +15,9 @@ frontend/.env.production
 
 data/
 backend/temp_*
+biometric_dataset/
+crops/
+inputs/
 
 .vscode/
 .idea/
