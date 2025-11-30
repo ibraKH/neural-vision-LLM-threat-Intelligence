@@ -6,8 +6,8 @@ import logging
 import os
 import re
 from typing import List, Dict, Any
+from paddleocr import PaddleOCR
 
-# Configure logging
 logging.basicConfig(stream=sys.stderr, level=logging.ERROR)
 logger = logging.getLogger(__name__)
 
@@ -80,7 +80,6 @@ def group_detections(detections: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     final_detections = []
     
     for line in lines:
-        # Determine dominant language for sorting
         total_chars = sum(len(d['text']) for d in line)
         arabic_chars = sum(len(re.findall(r'[\u0600-\u06FF]', d['text'])) for d in line)
         is_arabic = (arabic_chars / total_chars > 0.5) if total_chars > 0 else False
@@ -92,7 +91,6 @@ def group_detections(detections: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             
         merged_text = " ".join([d['text'] for d in line])
         
-        # Merge tags (Priority: SENSITIVE > LOCATION > COMMERCIAL)
         tags = [d['tag'] for d in line]
         if "SENSITIVE" in tags:
             final_tag = "SENSITIVE"
@@ -123,8 +121,7 @@ def main():
         sys.exit(1)
 
     try:
-        # Initialize PaddleOCR (Arabic/English support, text orientation detection)
-        ocr = PaddleOCR(use_textline_orientation=True, lang='ar', show_log=False)
+        ocr = PaddleOCR(use_textline_orientation=True, lang='ar')
         result = ocr.ocr(image_path)
     except Exception as e:
         logger.error(f"OCR processing failed: {e}")
@@ -132,9 +129,7 @@ def main():
 
     raw_detections = []
     
-    # Parse PaddleOCR result (handles both list of lists and list of dicts structures)
     if result:
-        # New structure (dict)
         if isinstance(result, list) and len(result) > 0 and isinstance(result[0], dict) and 'rec_texts' in result[0]:
             data = result[0]
             for text, confidence, box in zip(data.get('rec_texts', []), data.get('rec_scores', []), data.get('dt_polys', [])):
@@ -186,6 +181,7 @@ def main():
         "raw_detections": final_detections
     }
 
+    sys.stdout.reconfigure(encoding='utf-8')
     print(json.dumps(output, indent=2, ensure_ascii=False))
 
 def _determine_tag(text: str) -> str:
