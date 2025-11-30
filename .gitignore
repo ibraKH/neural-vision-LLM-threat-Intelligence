@@ -18,6 +18,7 @@ backend/temp_*
 biometric_dataset/
 crops/
 inputs/
+runs/
 
 .vscode/
 .idea/
@@ -30,3 +31,11 @@ Thumbs.db
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
+*.pt
+
+detected_*.jpg
+detected_*.png
+output.json
+output_*.json
+visualize_results.py
+test_*.py
