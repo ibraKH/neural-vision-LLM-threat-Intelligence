@@ -59,16 +59,11 @@ def run_module(script_name, args):
         logger.error(f"Exception running {script_name}: {e}")
         return {"status": "error", "message": str(e), "data": None}
 
-def main():
-    parser = argparse.ArgumentParser(description="Central Security Pipeline Orchestrator")
-    parser.add_argument("--image", required=True, help="Path to the target image")
-    args = parser.parse_args()
-    
-    image_path = os.path.abspath(args.image)
+def run_pipeline(image_path):
+    image_path = os.path.abspath(image_path)
     if not os.path.exists(image_path):
         logger.error(f"Image not found: {image_path}")
-        print(json.dumps({"error": "Image not found"}))
-        sys.exit(1)
+        return {"error": "Image not found"}
 
     base_dir = os.path.dirname(os.path.abspath(__file__))
     
@@ -126,6 +121,36 @@ def main():
         logger.warning("Skipping CCTV retrieval due to missing GPS data")
         results["cctv_retrieval"] = {"status": "skipped", "message": "Missing GPS data"}
 
+    try:
+        import main_reasoning
+        
+        biometrics_data = results.get("biometrics", {}).get("matches", [])
+        
+        obj_det_data = results.get("object_detection", {})
+        objects_list = []
+        if "detections" in obj_det_data:
+             objects_list = [obj.get("class_name") for obj in obj_det_data["detections"]]
+        
+        ocr_data = results.get("ocr_environment", {}).get("text", [])
+        
+        cctv_data = results.get("cctv_retrieval", {}).get("cameras", [])
+        
+        context_data = {
+            "biometrics": biometrics_data,
+            "objects": objects_list,
+            "ocr": ocr_data,
+            "location": {"lat": lat, "lng": lng} if lat else None,
+            "cctv": cctv_data
+        }
+        
+        logger.info("Running reasoning engine...")
+        reasoning_result = main_reasoning.analyze_incident(context_data)
+        results["reasoning"] = reasoning_result
+        
+    except Exception as e:
+        logger.error(f"Reasoning module failed: {e}")
+        results["reasoning"] = {"status": "error", "message": str(e)}
+
     master_json = {
         "pipeline_id": pipeline_id,
         "timestamp": timestamp,
@@ -133,9 +158,18 @@ def main():
         "modules": results,
         "system_status": "READY_FOR_REASONING"
     }
+    
+    return master_json
+
+def main():
+    parser = argparse.ArgumentParser(description="Central Security Pipeline Orchestrator")
+    parser.add_argument("--image", required=True, help="Path to the target image")
+    args = parser.parse_args()
+    
+    result = run_pipeline(args.image)
 
     sys.stdout.reconfigure(encoding='utf-8')
-    print(json.dumps(master_json, indent=2, ensure_ascii=False))
+    print(json.dumps(result, indent=2, ensure_ascii=False))
 
 if __name__ == "__main__":
     main()

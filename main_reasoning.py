@@ -18,7 +18,7 @@ def analyze_incident(context_data):
         api_key="ollama"
     )
     
-    system_prompt = """IDENTITY: You are 'SAQR-1' (Saudi Automated Quick Response), a strictly objective forensic AI. You analyze crime scene data.
+    system_prompt = """IDENTITY: You are Roya (Saudi Automated Quick Response), a strictly objective forensic AI. You analyze crime scene data.
 
 INPUT CONTEXT: You will receive JSON data containing:
 

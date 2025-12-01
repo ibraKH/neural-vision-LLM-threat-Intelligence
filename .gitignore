@@ -40,3 +40,4 @@ output.json
 output_*.json
 visualize_results.py
 test_*.py
+static/
