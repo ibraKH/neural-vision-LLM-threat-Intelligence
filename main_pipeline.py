@@ -111,6 +111,21 @@ def main():
                 logger.error(f"Module {module_name} generated an exception: {e}")
                 results[module_name] = {"status": "error", "message": str(e)}
 
+    # CCTV Retrieval (Dependent on GPS)
+    gps_data = results.get("GPS", {})
+    lat = gps_data.get("lat")
+    lng = gps_data.get("lng")
+
+    if lat is not None and lng is not None:
+        cctv_script = os.path.join(base_dir, "main_cctv_retrieval.py")
+        # Ensure lat/lng are strings for command line arguments
+        cctv_args = ["--lat", str(lat), "--lng", str(lng)]
+        cctv_result = run_module(cctv_script, cctv_args)
+        results["cctv_retrieval"] = cctv_result
+    else:
+        logger.warning("Skipping CCTV retrieval due to missing GPS data")
+        results["cctv_retrieval"] = {"status": "skipped", "message": "Missing GPS data"}
+
     master_json = {
         "pipeline_id": pipeline_id,
         "timestamp": timestamp,
