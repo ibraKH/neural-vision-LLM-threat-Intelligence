@@ -1,16 +1,20 @@
 import shutil
 import uuid
 import os
-import json
-from enum import Enum
-from typing import List, Optional
+from typing import Optional
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.concurrency import run_in_threadpool
+from pydantic import BaseModel
 
 import main_pipeline
+import main_prediction
+
+class PredictionRequest(BaseModel):
+    start_coords: tuple
+    suspect_id: Optional[str] = "suspect_123"
 
 app = FastAPI(title="Roya", version="1.0 MVP")
 
@@ -55,11 +59,9 @@ async def analyze_image(file: UploadFile = File(...)):
         result = await run_in_threadpool(main_pipeline.run_pipeline, file_path)
 
         image_url = f"http://localhost:8000/static/uploads/{unique_filename}"
-        
-       
         result["image_url"] = image_url
         result["report_id"] = str(uuid.uuid4())
-        result["processed_at"] = result.get("timestamp") # Reuse timestamp from pipeline
+        result["processed_at"] = result.get("timestamp")
 
         REPORT_DATABASE.append(result)
 
@@ -71,18 +73,17 @@ async def analyze_image(file: UploadFile = File(...)):
 @app.get("/reports")
 async def get_reports(sort_by: Optional[str] = Query(None)):
     if sort_by == "priority":
-        
         def get_priority(report):
             modules = report.get("modules", {})
             reasoning = modules.get("reasoning", {})
             classification_data = reasoning.get("classification", {})
-            
+
             priority = "UNKNOWN"
             if isinstance(classification_data, dict):
                 priority = classification_data.get("priority", "UNKNOWN")
             elif isinstance(classification_data, str):
                 priority = classification_data
-            
+
             return PRIORITY_MAP.get(priority.upper(), 99)
 
         return sorted(REPORT_DATABASE, key=get_priority)
@@ -93,6 +94,17 @@ async def get_reports(sort_by: Optional[str] = Query(None)):
 async def clear_reports():
     REPORT_DATABASE.clear()
     return {"status": "cleared", "message": "Report database has been reset"}
+
+@app.post("/predict")
+async def predict_location_endpoint(request: PredictionRequest):
+    try:
+        result = main_prediction.predict_movement(
+            request.start_coords,
+            request.suspect_id
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
