@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import LeafletMap from './LeafletMap';
-import { Upload, Shield, AlertTriangle, FileText, Camera, Scan, Globe, MapPin } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { TimelineJourney, createTimelineFromAnalysis } from './components/TimelineJourney';
+import { GPSRadar } from './components/GPSRadar';
+import { CCTVNetwork } from './components/CCTVNetwork';
+import { SuspectProfile } from './components/SuspectProfile';
+import { ThreatDetection } from './components/ThreatDetection';
 
 interface AnalysisResult {
   pipeline_id: string;
@@ -79,7 +84,7 @@ const TypewriterText = ({ text, delay = 0 }: { text: string; delay?: number }) =
         setDisplayedText((prev) => prev + text.charAt(index));
         index++;
         if (index === text.length) clearInterval(interval);
-      }, 30); // Typing speed
+      }, 30);
       return () => clearInterval(interval);
     }, delay);
 
@@ -94,6 +99,7 @@ function App() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisStep, setAnalysisStep] = useState<string>('');
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [predictionResult, setPredictionResult] = useState<any>(null);
   const [language, setLanguage] = useState<'en' | 'ar'>('en');
 
   const isRTL = language === 'ar';
@@ -115,9 +121,10 @@ function App() {
     }
   };
 
-  const handleAnalyze = async (selectedFile: File) => {
+  const handleAnalyze = async (file: File) => {
     setIsAnalyzing(true);
     setResult(null);
+    setPredictionResult(null);
 
     const steps = [
       isRTL ? "استخراج البيانات البيومترية..." : "Extracting Biometrics...",
@@ -125,27 +132,34 @@ function App() {
       isRTL ? "الاستعلام من شبكة الكاميرات الوطنية..." : "Querying National CCTV Grid..."
     ];
 
+    // Start the analysis request
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const analysisPromise = fetch('http://localhost:8000/analyze', {
+      method: 'POST',
+      body: formData,
+    }).then(async res => {
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(`Analysis failed: ${err}`);
+      }
+      return res.json();
+    });
+
+    // Show animation steps while waiting
     for (let i = 0; i < steps.length; i++) {
       setAnalysisStep(steps[i]);
       await new Promise(resolve => setTimeout(resolve, 1500));
     }
 
     try {
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-
-      const response = await fetch('http://localhost:8000/analyze', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) throw new Error('Analysis failed');
-
-      const data = await response.json();
+      const data = await analysisPromise;
       console.log("API Response:", data);
       setResult(data);
     } catch (error) {
-      console.error(error);
+      console.error("Error analyzing image:", error);
+      alert("Failed to analyze image. Ensure backend is running.");
     } finally {
       setIsAnalyzing(false);
       setAnalysisStep('');
@@ -158,26 +172,25 @@ function App() {
 
   return (
     <div className={cn(
-      "min-h-screen bg-bg text-gray-800 font-sans overflow-x-hidden transition-all duration-300",
+      "min-h-screen bg-white text-gray-900 font-sans overflow-x-hidden transition-all duration-300",
       isRTL ? "font-arabic" : "font-sans"
     )} dir={isRTL ? 'rtl' : 'ltr'}>
 
-      <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-md border-b border-gray-200 z-50 px-6 py-4 flex justify-between items-center">
+      <nav className="fixed top-0 w-full bg-white/95 backdrop-blur-sm border-b border-gray-200 z-50 px-6 py-4 flex justify-between items-center shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-primary/30">
+          <div className="w-10 h-10 bg-gradient-to-br from-primary to-green-600 rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-md">
             R
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900 tracking-tight">ROYA <span className="text-gold font-light">SAQR-1</span></h1>
+            <h1 className="text-xl font-bold text-gray-900 tracking-tight">ROYA <span className="text-primary font-light">SAQR-1</span></h1>
             <p className="text-xs text-gray-500 tracking-widest uppercase">{isRTL ? "نظام التحليل التكتيكي" : "Tactical Analysis System"}</p>
           </div>
         </div>
         <div className="flex items-center gap-4">
           <button
             onClick={toggleLanguage}
-            className="px-4 py-2 rounded-full bg-gray-100 hover:bg-gray-200 text-sm font-medium transition-colors flex items-center gap-2"
+            className="px-4 py-2 rounded-full bg-gray-100 hover:bg-gray-200 border border-gray-300 text-sm font-medium transition-colors text-gray-700"
           >
-            <Globe size={16} />
             {isRTL ? "English" : "العربية"}
           </button>
         </div>
@@ -195,20 +208,17 @@ function App() {
               className="flex-1 flex flex-col items-center justify-center"
             >
               <div
-                className="w-full max-w-2xl aspect-video rounded-3xl border-2 border-dashed border-gray-300 bg-white hover:border-gold hover:bg-gold/5 transition-all duration-300 cursor-pointer flex flex-col items-center justify-center relative overflow-hidden group"
+                className="w-full max-w-2xl aspect-video rounded-3xl border-2 border-dashed border-gray-300 bg-gray-50 hover:border-primary hover:bg-primary/5 transition-all duration-300 cursor-pointer flex flex-col items-center justify-center relative overflow-hidden group"
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={handleDrop}
                 onClick={() => document.getElementById('file-upload')?.click()}
               >
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
                 <div className="z-10 flex flex-col items-center text-center p-8">
-                  <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                    <Upload className="w-10 h-10 text-primary" />
-                  </div>
                   <h2 className="text-2xl font-bold text-gray-900 mb-2">{isRTL ? "تحميل لقطات المراقبة" : "Upload Surveillance Footage"}</h2>
-                  <p className="text-gray-500 mb-8 max-w-md">{isRTL ? "قم بالسحب والإفلات أو النقر للتحميل. يدعم جميع تنسيقات الصور الرئيسية للتحليل الجنائي." : "Drag and drop or click to upload. Supports all major image formats for forensic analysis."}</p>
-                  <button className="px-8 py-3 bg-primary text-white rounded-xl font-semibold shadow-lg shadow-primary/30 hover:bg-primary/90 transition-all transform hover:-translate-y-1">
+                  <p className="text-gray-600 mb-8 max-w-md">{isRTL ? "قم بالسحب والإفلات أو النقر للتحميل. يدعم جميع تنسيقات الصور الرئيسية للتحليل الجنائي." : "Drag and drop or click to upload. Supports all major image formats for forensic analysis."}</p>
+                  <button className="px-8 py-3 bg-gradient-to-r from-primary to-green-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1">
                     {isRTL ? "بدء التحقيق" : "Initiate Investigation"}
                   </button>
                 </div>
@@ -252,159 +262,319 @@ function App() {
               key="dashboard"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full"
+              className="w-full space-y-8"
             >
-              <div className="lg:col-span-4 space-y-6">
+              {/* Top Stats Bar */}
+              <motion.div
+                initial={{ y: -20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.1 }}
+                className="grid grid-cols-1 md:grid-cols-4 gap-4"
+              >
+                {/* Priority Level */}
                 <motion.div
-                  initial={{ x: -20, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                  className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 h-full flex flex-col"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.15 }}
+                  className="bg-white rounded-xl p-6 shadow-md border border-gray-200"
                 >
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-2">
-                      <FileText className="text-primary" size={20} />
-                      <h3 className="font-bold text-gray-900">{isRTL ? "تقرير التحليل" : "Analysis Report"}</h3>
-                    </div>
-                    <span className={cn(
-                      "px-3 py-1 rounded-full text-xs font-bold border",
-                      result.modules.reasoning.classification.priority === 'CRITICAL' ? "bg-red-50 text-red-600 border-red-200" : "bg-gold/10 text-gold border-gold/20"
-                    )}>
-                      {result.modules.reasoning.classification.priority} PRIORITY
-                    </span>
+                  <div className="text-xs text-gray-500 uppercase tracking-wider mb-2 font-semibold">
+                    {isRTL ? "مستوى الأولوية" : "Priority Level"}
                   </div>
-
-                  <div className="prose prose-sm max-w-none flex-1 font-mono text-gray-600 leading-relaxed">
-                    <TypewriterText text={result.modules.reasoning.report.detailed_narrative} delay={500} />
-                  </div>
-
-                  <div className="mt-6 pt-6 border-t border-gray-100">
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">{isRTL ? "خطة العمل الموصى بها" : "Recommended Action Plan"}</h4>
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                      <Shield className="text-gold" size={18} />
-                      <span className="text-sm font-medium text-gray-800">{result.modules.reasoning.action_plan.recommended_unit}</span>
-                    </div>
+                  <div className="text-4xl font-black text-gray-900">
+                    {result.modules.reasoning.classification.priority}
                   </div>
                 </motion.div>
-              </div>
 
-              <div className="lg:col-span-3 space-y-6">
+                {/* Active Cameras */}
                 <motion.div
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.4 }}
-                  className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.25 }}
+                  className="bg-white rounded-xl p-6 shadow-md border border-gray-200"
                 >
-                  <div className="flex items-center gap-2 mb-4">
-                    <Scan className="text-primary" size={20} />
-                    <h3 className="font-bold text-gray-900">{isRTL ? "المطابقة البيومترية" : "Biometric Match"}</h3>
+                  <div className="text-xs text-gray-500 uppercase tracking-wider mb-2 font-semibold">
+                    {isRTL ? "كاميرات نشطة" : "Active Cameras"}
                   </div>
-
-                  {result.modules.biometrics.matches.length > 0 ? (
-                    <div className="space-y-4">
-                      {result.modules.biometrics.matches.map((match, idx) => (
-                        <div key={idx} className="relative group">
-                          <div className="aspect-square rounded-xl overflow-hidden border-2 border-red-500 shadow-lg shadow-red-500/20 relative">
-                            <img src={preview!} alt="Suspect" className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-red-500/10 animate-pulse" />
-                          </div>
-                          <div className="mt-3">
-                            <div className="flex justify-between items-center mb-1">
-                              <span className="font-bold text-gray-900">{match.info.name}</span>
-                              <span className="text-red-600 text-xs font-bold">{match.info.is_wanted ? "WANTED" : "UNKNOWN"}</span>
-                            </div>
-                            <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                              <div className="bg-red-500 h-full rounded-full" style={{ width: `${match.confidence * 100}%` }} />
-                            </div>
-                            <span className="text-xs text-gray-400 mt-1 block">{Math.round(match.confidence * 100)}% {isRTL ? "تطابق" : "Match"}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-gray-400 text-sm">
-                      {isRTL ? "لم يتم العثور على تطابق" : "No biometric matches found"}
-                    </div>
-                  )}
-                </motion.div>
-
-                <motion.div
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.5 }}
-                  className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
-                >
-                  <div className="flex items-center gap-2 mb-4">
-                    <Camera className="text-primary" size={20} />
-                    <h3 className="font-bold text-gray-900">{isRTL ? "الأشياء المكتشفة" : "Detected Objects"}</h3>
-                  </div>
-
-                  <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-                    {result.modules.object_detection.detections.map((obj, idx) => (
-                      <motion.div
-                        key={idx}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.6 + (idx * 0.1) }}
-                        className="flex items-center justify-between p-2 rounded-lg bg-gray-50 border border-gray-100"
-                      >
-                        <span className="text-sm font-medium text-gray-700 capitalize">{obj.label}</span>
-                        {obj.threat_tag && <AlertTriangle size={14} className="text-red-500" />}
-                      </motion.div>
-                    ))}
+                  <div className="text-4xl font-black text-gray-900">
+                    {result.modules.cctv_retrieval.cctv_nodes.length}
                   </div>
                 </motion.div>
-              </div>
 
-              <div className="lg:col-span-5">
+                {/* Biometric Matches */}
                 <motion.div
-                  initial={{ x: 20, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: 0.6 }}
-                  className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden h-[600px] relative"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.35 }}
+                  className="bg-white rounded-xl p-6 shadow-md border border-gray-200"
                 >
-                  <LeafletMap
-                    center={[result.modules.GPS.lat, result.modules.GPS.lng]}
-                    zoom={17}
+                  <div className="text-xs text-gray-500 uppercase tracking-wider mb-2 font-semibold">
+                    {isRTL ? "تطابقات بيومترية" : "Biometric Matches"}
+                  </div>
+                  <div className="text-4xl font-black text-gray-900">
+                    {result.modules.biometrics.matches.length}
+                  </div>
+                </motion.div>
+
+                {/* GPS Accuracy */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.45 }}
+                  className="bg-white rounded-xl p-6 shadow-md border border-gray-200"
+                >
+                  <div className="text-xs text-gray-500 uppercase tracking-wider mb-2 font-semibold">
+                    {isRTL ? "دقة GPS" : "GPS Accuracy"}
+                  </div>
+                  <div className="text-4xl font-black text-gray-900">
+                    {Math.round(result.modules.GPS.confidence * 100)}%
+                  </div>
+                </motion.div>
+              </motion.div>
+
+              {/* Suspect Profile - Full Width Dramatic Reveal */}
+              {result.modules.biometrics.matches.length > 0 && (
+                <motion.div
+                  initial={{ scale: 0.95, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  <SuspectProfile
+                    info={result.modules.biometrics.matches[0].info}
+                    confidence={result.modules.biometrics.matches[0].confidence}
+                    previewImage={preview || undefined}
                     isRTL={isRTL}
-                    markers={[
-                      {
-                        position: [result.modules.GPS.lat, result.modules.GPS.lng],
-                        title: isRTL ? "موقع الحادث" : "Incident Location",
-                        description: `Confidence: ${result.modules.GPS.confidence.toFixed(2)}`,
-                        type: 'gps'
-                      },
-                      ...result.modules.cctv_retrieval.cctv_nodes.map(cam => ({
-                        position: [cam.gps.lat, cam.gps.lng] as [number, number],
-                        title: cam.business_name,
-                        description: `Distance: ${cam.distance}`,
-                        type: 'camera' as const
-                      }))
-                    ]}
-                    antPathPositions={[
-                      [result.modules.GPS.lat, result.modules.GPS.lng],
-                      ...result.modules.cctv_retrieval.cctv_nodes.map(c => [c.gps.lat, c.gps.lng] as [number, number])
-                    ]}
                   />
-
-                  <div className="absolute top-4 right-4 z-[400] bg-white/90 backdrop-blur-sm p-4 rounded-xl shadow-lg border border-gray-200 max-w-xs">
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">{isRTL ? "مسار الهروب المحتمل" : "Potential Escape Route"}</h4>
-                    <div className="flex items-center gap-2 text-primary font-bold">
-                      <MapPin size={16} />
-                      <span>{result.modules.GPS.lat.toFixed(4)}, {result.modules.GPS.lng.toFixed(4)}</span>
-                    </div>
-                    <div className="mt-2 text-xs text-gray-500">
-                      {result.modules.cctv_retrieval.cctv_nodes.length} {isRTL ? "كاميرات قريبة تم تحديدها" : "nearby cameras identified"}
-                    </div>
-                  </div>
                 </motion.div>
+              )}
+
+              {/* Two Column Layout */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Left Column */}
+                <div className="space-y-6">
+                  {/* GPS Radar */}
+                  <motion.div
+                    initial={{ x: -50, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: 0.5 }}
+                  >
+                    <GPSRadar
+                      lat={result.modules.GPS.lat}
+                      lng={result.modules.GPS.lng}
+                      confidence={result.modules.GPS.confidence}
+                      isRTL={isRTL}
+                    />
+                  </motion.div>
+
+                  {/* Threat Detection */}
+                  <motion.div
+                    initial={{ x: -50, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: 0.7 }}
+                  >
+                    <ThreatDetection
+                      detections={result.modules.object_detection.detections}
+                      threatLevel={result.modules.object_detection.summary.threat_level}
+                      isRTL={isRTL}
+                    />
+                  </motion.div>
+                </div>
+
+                {/* Right Column */}
+                <div className="space-y-6">
+                  {/* CCTV Network */}
+                  <motion.div
+                    initial={{ x: 50, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: 0.6 }}
+                  >
+                    <CCTVNetwork
+                      nodes={result.modules.cctv_retrieval.cctv_nodes}
+                      centerPoint={{ lat: result.modules.GPS.lat, lng: result.modules.GPS.lng }}
+                      isRTL={isRTL}
+                    />
+                  </motion.div>
+
+                  {/* Action Plan */}
+                  <motion.div
+                    initial={{ x: 50, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: 0.8 }}
+                    className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200"
+                  >
+                    <div className="mb-6">
+                      <h3 className="font-bold text-gray-900 text-lg">{isRTL ? "خطة العمل" : "Action Plan"}</h3>
+                      <p className="text-sm text-gray-500">{isRTL ? "الإجراءات الموصى بها" : "Recommended Actions"}</p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="bg-gradient-to-r from-gold/10 to-amber-50 rounded-xl p-4 border border-gold/30">
+                        <div className="text-xs text-gray-500 mb-2 uppercase tracking-wider">{isRTL ? "وحدة الاستجابة" : "Response Unit"}</div>
+                        <div className="text-gray-900 font-bold text-lg">{result.modules.reasoning.action_plan.recommended_unit}</div>
+                      </div>
+
+                      <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+                        <div className="text-xs text-gray-500 mb-2 uppercase tracking-wider">{isRTL ? "أقرب كاميرا" : "Nearest Camera"}</div>
+                        <div className="text-gray-900 font-bold">{result.modules.reasoning.action_plan.nearest_cctv || 'N/A'}</div>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          const MOCK_DATA = {
+                            prediction_id: "sim_001",
+                            suspect_id: "sim_suspect",
+                            timestamp: new Date().toISOString(),
+                            routes: [
+                              {
+                                route_id: "route_a",
+                                type: "HIDEOUT",
+                                destination: "Al-Ammariyah Compound",
+                                probability: 0.85,
+                                color: "red",
+                                speed: "fast",
+                                path: [
+                                  [24.7136, 46.6753],
+                                  [24.7200, 46.6800],
+                                  [24.7300, 46.6900],
+                                  [24.7400, 46.6850],
+                                  [24.7500, 46.6600]
+                                ],
+                                intercept_points: [
+                                  { lat: 24.7300, lng: 46.6900, type: "blockade" }
+                                ],
+                                reasoning: "High probability match with known associate hideout. Suspect frequent visitor."
+                              },
+                              {
+                                route_id: "route_b",
+                                type: "ESCAPE",
+                                destination: "King Fahd Highway",
+                                probability: 0.10,
+                                color: "orange",
+                                speed: "medium",
+                                path: [
+                                  [24.7136, 46.6753],
+                                  [24.7100, 46.6700],
+                                  [24.7000, 46.6600],
+                                  [24.6900, 46.6500]
+                                ],
+                                intercept_points: [
+                                  { lat: 24.7000, lng: 46.6600, type: "checkpoint" }
+                                ],
+                                reasoning: "Standard evasion route towards highway exit."
+                              },
+                              {
+                                route_id: "route_c",
+                                type: "HOME",
+                                destination: "Al-Naseem Residence",
+                                probability: 0.05,
+                                color: "yellow",
+                                speed: "slow",
+                                path: [
+                                  [24.7136, 46.6753],
+                                  [24.7150, 46.6850],
+                                  [24.7200, 46.7000],
+                                  [24.7250, 46.7200]
+                                ],
+                                intercept_points: [],
+                                reasoning: "Low probability return to registered address."
+                              }
+                            ]
+                          };
+                          setPredictionResult(MOCK_DATA);
+                        }}
+                        className="w-full py-4 bg-gradient-to-r from-primary to-green-600 text-white hover:from-primary/90 hover:to-green-700 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                      >
+                        <MapPin size={20} />
+                        {isRTL ? "توقع مسار الهروب" : "Predict Escape Route"}
+                      </button>
+                    </div>
+                  </motion.div>
+                </div>
               </div>
+
+              {/* Intelligence Report */}
+              <motion.div
+                initial={{ y: 50, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.9 }}
+                className="bg-white rounded-2xl p-8 shadow-sm border border-gray-200"
+              >
+                <div className="mb-6">
+                  <h3 className="font-bold text-gray-900 text-xl">{isRTL ? "تقرير الاستخبارات" : "Intelligence Report"}</h3>
+                  <p className="text-sm text-gray-500">{isRTL ? "تحليل تفصيلي للحادث" : "Detailed Incident Analysis"}</p>
+                </div>
+
+                <div className="prose prose-sm max-w-none font-mono text-gray-700 leading-relaxed bg-gray-50 rounded-xl p-6 border border-gray-200">
+                  <TypewriterText text={result.modules.reasoning.report.detailed_narrative} delay={200} />
+                </div>
+              </motion.div>
+
+              {/* Map View - Full Width */}
+              <motion.div
+                initial={{ y: 50, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 1 }}
+                className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden h-[600px] relative"
+              >
+                <div className="absolute top-6 left-6 z-[400] bg-white/95 backdrop-blur-sm px-6 py-4 rounded-xl shadow-lg border border-gray-200">
+                  <h4 className="text-xs font-bold uppercase tracking-wider mb-2 text-gray-500">{isRTL ? "خريطة تكتيكية" : "Tactical Map"}</h4>
+                  <div className="flex items-center gap-2 font-bold text-lg mb-2">
+                    <MapPin size={18} className="text-red-500" />
+                    <span className="text-gray-900">{result.modules.GPS.lat.toFixed(4)}°N, {result.modules.GPS.lng.toFixed(4)}°E</span>
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    {result.modules.cctv_retrieval.cctv_nodes.length} {isRTL ? "كاميرات متصلة" : "cameras online"}
+                  </div>
+                </div>
+
+                <LeafletMap
+                  center={[result.modules.GPS.lat, result.modules.GPS.lng]}
+                  zoom={15}
+                  isRTL={isRTL}
+                  markers={[
+                    {
+                      position: [result.modules.GPS.lat, result.modules.GPS.lng],
+                      title: isRTL ? "موقع الحادث" : "Incident Location",
+                      description: `Confidence: ${result.modules.GPS.confidence.toFixed(2)}`,
+                      type: 'gps'
+                    },
+                    ...result.modules.cctv_retrieval.cctv_nodes.map(cam => ({
+                      position: [cam.gps.lat, cam.gps.lng] as [number, number],
+                      title: cam.business_name,
+                      description: `Distance: ${cam.distance}`,
+                      type: 'camera' as const
+                    }))
+                  ]}
+                  antPathPositions={[
+                    [result.modules.GPS.lat, result.modules.GPS.lng],
+                    ...result.modules.cctv_retrieval.cctv_nodes.map(c => [c.gps.lat, c.gps.lng] as [number, number])
+                  ]}
+                  predictionData={predictionResult}
+                />
+              </motion.div>
+
+              {/* Timeline Journey */}
+              <motion.div
+                initial={{ y: 50, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 1.2 }}
+                className="bg-white rounded-2xl p-8 shadow-sm border border-gray-200"
+              >
+                <div className="mb-8">
+                  <h3 className="font-bold text-gray-900 text-xl">{isRTL ? "الجدول الزمني للحادث" : "Incident Timeline"}</h3>
+                  <p className="text-sm text-gray-500">{isRTL ? "تسلسل الأحداث" : "Sequence of Events"}</p>
+                </div>
+                <TimelineJourney
+                  events={createTimelineFromAnalysis(result, isRTL)}
+                  isRTL={isRTL}
+                />
+              </motion.div>
 
             </motion.div>
           ) : null}
         </AnimatePresence>
-      </main>
-    </div>
+      </main >
+    </div >
   );
 }
 
