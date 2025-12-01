@@ -62,6 +62,7 @@ async def analyze_image(file: UploadFile = File(...)):
         result["image_url"] = image_url
         result["report_id"] = str(uuid.uuid4())
         result["processed_at"] = result.get("timestamp")
+        result.setdefault("language", "ar")
 
         REPORT_DATABASE.append(result)
 
@@ -102,6 +103,7 @@ async def predict_location_endpoint(request: PredictionRequest):
             request.start_coords,
             request.suspect_id
         )
+        result.setdefault("language", "ar")
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

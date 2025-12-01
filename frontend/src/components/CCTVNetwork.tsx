@@ -68,6 +68,7 @@ export const CCTVNetwork: React.FC<CCTVNetworkProps> = ({ nodes, isRTL = false }
         <AnimatePresence>
           {nodes.map((node, index) => {
             const isActive = activeNodes.includes(index);
+            const distanceText = isRTL ? `${node.distance} على بعد` : `${node.distance} away`;
             return (
               <motion.div
                 key={node.rank}
@@ -91,7 +92,7 @@ export const CCTVNetwork: React.FC<CCTVNetworkProps> = ({ nodes, isRTL = false }
                   </div>
                   <div>
                     <div className="font-semibold text-gray-900 text-sm">{node.business_name}</div>
-                    <div className="text-xs text-gray-500">{node.distance} away</div>
+                    <div className="text-xs text-gray-500">{distanceText}</div>
                   </div>
                 </div>
                 {isActive && (

@@ -3,7 +3,20 @@ import math
 import argparse
 import sys
 import os
+import io
+
+# Force UTF-8 for stdout
+sys.stdout.reconfigure(encoding='utf-8')
 from location_recognizer import LocationRecognizer
+
+CCTV_NAME_MAP = {
+    "Al-Dawaa Pharmacy #291": "صيدلية الدواء رقم 291",
+    "Tamimi Markets Express": "أسواق التميمي إكسبريس",
+    "Al-Rajhi Bank ATM": "صراف الراجحي",
+    "Al-Amal Baquala (Grocery)": "بقالة الأمل",
+    "Golden Juice & Snacks": "عصائر جولدن سناك",
+    "Riyadh Modern Laundry": "مغسلة الرياض الحديثة"
+}
 
 def haversine_distance(lat1, lon1, lat2, lon2):
     """
@@ -85,12 +98,16 @@ def main():
         dist = haversine_distance(target_lat, target_lng, cam["lat"], cam["lng"])
         # Filter logic (e.g., only within 500m)
         if dist <= 500:
+            business_name_en = cam["business_name"]
+            business_name_ar = CCTV_NAME_MAP.get(business_name_en, business_name_en)
             results.append({
-                "business_name": cam["business_name"],
+                "business_name": business_name_ar,
+                "business_name_en": business_name_en,
                 "lat": cam["lat"],
                 "lng": cam["lng"],
                 "distance_val": dist, # Keep numeric for sorting
-                "distance": f"{int(dist)}m"
+                "distance": f"{int(dist)} متر",
+                "distance_en": f"{int(dist)}m"
             })
 
     # Sort by distance
@@ -102,11 +119,13 @@ def main():
         final_nodes.append({
             "rank": idx + 1,
             "business_name": item["business_name"],
+            "business_name_en": item["business_name_en"],
             "gps": {
                 "lat": item["lat"],
                 "lng": item["lng"]
             },
-            "distance": item["distance"]
+            "distance": item["distance"],
+            "distance_en": item["distance_en"]
         })
 
     output = {
@@ -115,7 +134,8 @@ def main():
             "target_coords": {
                 "lat": target_lat,
                 "lng": target_lng
-            }
+            },
+            "language": "ar"
         },
         "cctv_nodes": final_nodes
     }

@@ -14,6 +14,7 @@ interface AnalysisResult {
   pipeline_id: string;
   timestamp: string;
   target_image: string;
+  language?: 'ar' | 'en';
   image_url: string;
   report_id: string;
   processed_at: string;
@@ -23,7 +24,19 @@ interface AnalysisResult {
       matches: Array<{
         face_id: number;
         identity: string;
-        info: { name: string; description: string; location: string; is_wanted: boolean; id_number: string; phone_number: string };
+        info: {
+          name: string;
+          name_en?: string;
+          description: string;
+          description_en?: string;
+          location: string;
+          location_en?: string;
+          is_wanted: boolean;
+          id_number: string;
+          id_number_en?: string;
+          phone_number: string;
+          phone_number_en?: string;
+        };
         confidence: number;
         box: { x: number; y: number; w: number; h: number };
         face_crop_path: string;
@@ -37,9 +50,10 @@ interface AnalysisResult {
     };
     object_detection: {
       meta: { timestamp: string; model: string; output_image: string; imgsz: number };
-      summary: { total_objects: number; threat_level: string };
+      summary: { total_objects: number; threat_level: string; threat_level_label?: string };
       detections: Array<{
         label: string;
+        label_en?: string;
         confidence: number;
         box: { x1: number; y1: number; x2: number; y2: number };
         threat_tag: boolean;
@@ -55,16 +69,26 @@ interface AnalysisResult {
       cctv_nodes: Array<{
         rank: number;
         business_name: string;
+        business_name_en?: string;
         gps: { lat: number; lng: number };
         distance: string;
+        distance_en?: string;
       }>;
     };
     reasoning: {
+      language?: 'ar' | 'en';
       incident_id: string;
       timestamp: string;
-      classification: { priority: string; domain: string; type: string };
+      classification: {
+        priority: string;
+        domain: string;
+        type: string;
+        labels?: { priority_ar?: string; domain_ar?: string; type_ar?: string };
+      };
       report: { summary: string; detailed_narrative: string; visual_evidence: string[] };
-      action_plan: { recommended_unit: string; nearest_cctv: string | null };
+      report_en?: { summary: string; detailed_narrative: string; visual_evidence: string[] };
+      action_plan: { recommended_unit: string; nearest_cctv: string | null; notes?: string };
+      action_plan_en?: { recommended_unit: string; nearest_cctv: string | null; notes?: string };
     };
   };
 }
@@ -94,15 +118,54 @@ const TypewriterText = ({ text, delay = 0 }: { text: string; delay?: number }) =
   return <span>{displayedText}</span>;
 };
 
+const localizeText = (language: 'ar' | 'en', arText?: string | null, enText?: string | null) => {
+  if (language === 'ar') {
+    return arText ?? enText ?? '';
+  }
+  return enText ?? arText ?? '';
+};
+
 function App() {
   const [preview, setPreview] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisStep, setAnalysisStep] = useState<string>('');
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [predictionResult, setPredictionResult] = useState<any>(null);
-  const [language, setLanguage] = useState<'en' | 'ar'>('en');
+  const [language, setLanguage] = useState<'en' | 'ar'>('ar');
 
   const isRTL = language === 'ar';
+  const t = (ar?: string | null, en?: string | null) => localizeText(language, ar, en);
+  const priorityLabel = result?.modules?.reasoning?.classification
+    ? t(result.modules.reasoning.classification.labels?.priority_ar, result.modules.reasoning.classification.priority)
+    : '';
+  const narrativeText = result?.modules?.reasoning?.report ? t(result.modules.reasoning.report.detailed_narrative, result.modules.reasoning.report_en?.detailed_narrative) : '';
+  const summaryText = result?.modules?.reasoning?.report ? t(result.modules.reasoning.report.summary, result.modules.reasoning.report_en?.summary) : '';
+  const responseUnitText = result?.modules?.reasoning?.action_plan ? t(result.modules.reasoning.action_plan.recommended_unit, result.modules.reasoning.action_plan_en?.recommended_unit) : '';
+  const nearestCctvText = result?.modules?.reasoning?.action_plan ? t(result.modules.reasoning.action_plan.nearest_cctv, result.modules.reasoning.action_plan_en?.nearest_cctv) : '';
+  const localizedCctvNodes = result?.modules?.cctv_retrieval?.cctv_nodes
+    ? result.modules.cctv_retrieval.cctv_nodes.map((node) => ({
+      ...node,
+      business_name: language === 'ar' ? node.business_name : (node.business_name_en || node.business_name),
+      distance: language === 'ar' ? node.distance : (node.distance_en || node.distance),
+    }))
+    : [];
+  const localizedDetections = result?.modules?.object_detection?.detections
+    ? result.modules.object_detection.detections.map(det => ({
+      ...det,
+      label: language === 'ar' ? det.label : (det.label_en || det.label),
+    }))
+    : [];
+  const primaryMatch = result?.modules?.biometrics?.matches?.[0];
+  const localizedMatchInfo = primaryMatch
+    ? {
+      ...primaryMatch.info,
+      name: t(primaryMatch.info.name, (primaryMatch.info as any).name_en),
+      description: t(primaryMatch.info.description, (primaryMatch.info as any).description_en),
+      location: t(primaryMatch.info.location, (primaryMatch.info as any).location_en),
+      id_number: t(primaryMatch.info.id_number, (primaryMatch.info as any).id_number_en),
+      phone_number: t(primaryMatch.info.phone_number, (primaryMatch.info as any).phone_number_en),
+    }
+    : null;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -127,9 +190,9 @@ function App() {
     setPredictionResult(null);
 
     const steps = [
-      isRTL ? "استخراج البيانات البيومترية..." : "Extracting Biometrics...",
-      isRTL ? "تحديد الموقع الجغرافي..." : "Triangulating GPS...",
-      isRTL ? "الاستعلام من شبكة الكاميرات الوطنية..." : "Querying National CCTV Grid..."
+      t("استخراج البصمات البيومترية...", "Extracting Biometrics..."),
+      t("تثليث إحداثيات GPS...", "Triangulating GPS..."),
+      t("استعلام شبكة المراقبة الوطنية...", "Querying National CCTV Grid...")
     ];
 
     // Start the analysis request
@@ -178,11 +241,8 @@ function App() {
 
       <nav className="fixed top-0 w-full bg-white/95 backdrop-blur-sm border-b border-gray-200 z-50 px-6 py-4 flex justify-between items-center shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-primary to-green-600 rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-md">
-            R
-          </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900 tracking-tight">ROYA <span className="text-primary font-light">SAQR-1</span></h1>
+            <h1 className="text-xl font-bold text-gray-900 tracking-tight">رؤيا</h1>
             <p className="text-xs text-gray-500 tracking-widest uppercase">{isRTL ? "نظام التحليل التكتيكي" : "Tactical Analysis System"}</p>
           </div>
         </div>
@@ -282,7 +342,7 @@ function App() {
                     {isRTL ? "مستوى الأولوية" : "Priority Level"}
                   </div>
                   <div className="text-4xl font-black text-gray-900">
-                    {result.modules.reasoning.classification.priority}
+                    {priorityLabel || result.modules.reasoning.classification.priority}
                   </div>
                 </motion.div>
 
@@ -297,7 +357,7 @@ function App() {
                     {isRTL ? "كاميرات نشطة" : "Active Cameras"}
                   </div>
                   <div className="text-4xl font-black text-gray-900">
-                    {result.modules.cctv_retrieval.cctv_nodes.length}
+                    {localizedCctvNodes.length}
                   </div>
                 </motion.div>
 
@@ -333,15 +393,15 @@ function App() {
               </motion.div>
 
               {/* Suspect Profile - Full Width Dramatic Reveal */}
-              {result.modules.biometrics.matches.length > 0 && (
+              {primaryMatch && (
                 <motion.div
                   initial={{ scale: 0.95, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ delay: 0.3 }}
                 >
                   <SuspectProfile
-                    info={result.modules.biometrics.matches[0].info}
-                    confidence={result.modules.biometrics.matches[0].confidence}
+                    info={localizedMatchInfo || primaryMatch.info}
+                    confidence={primaryMatch.confidence}
                     previewImage={preview || undefined}
                     isRTL={isRTL}
                   />
@@ -373,7 +433,7 @@ function App() {
                     transition={{ delay: 0.7 }}
                   >
                     <ThreatDetection
-                      detections={result.modules.object_detection.detections}
+                      detections={localizedDetections}
                       threatLevel={result.modules.object_detection.summary.threat_level}
                       isRTL={isRTL}
                     />
@@ -389,7 +449,7 @@ function App() {
                     transition={{ delay: 0.6 }}
                   >
                     <CCTVNetwork
-                      nodes={result.modules.cctv_retrieval.cctv_nodes}
+                      nodes={localizedCctvNodes}
                       centerPoint={{ lat: result.modules.GPS.lat, lng: result.modules.GPS.lng }}
                       isRTL={isRTL}
                     />
@@ -410,12 +470,12 @@ function App() {
                     <div className="space-y-4">
                       <div className="bg-gradient-to-r from-gold/10 to-amber-50 rounded-xl p-4 border border-gold/30">
                         <div className="text-xs text-gray-500 mb-2 uppercase tracking-wider">{isRTL ? "وحدة الاستجابة" : "Response Unit"}</div>
-                        <div className="text-gray-900 font-bold text-lg">{result.modules.reasoning.action_plan.recommended_unit}</div>
+                        <div className="text-gray-900 font-bold text-lg">{responseUnitText || t("غير محدد", "Unspecified")}</div>
                       </div>
 
                       <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
                         <div className="text-xs text-gray-500 mb-2 uppercase tracking-wider">{isRTL ? "أقرب كاميرا" : "Nearest Camera"}</div>
-                        <div className="text-gray-900 font-bold">{result.modules.reasoning.action_plan.nearest_cctv || 'N/A'}</div>
+                        <div className="text-gray-900 font-bold">{nearestCctvText || t("غير متوفر", "N/A")}</div>
                       </div>
 
                       <button
@@ -427,11 +487,14 @@ function App() {
                             routes: [
                               {
                                 route_id: "route_a",
-                                type: "HIDEOUT",
-                                destination: "Al-Ammariyah Compound",
+                                type: "مخبأ",
+                                type_en: "HIDEOUT",
+                                destination: "استراحة العمارية",
+                                destination_en: "Al-Ammariyah Hideout",
                                 probability: 0.85,
                                 color: "red",
-                                speed: "fast",
+                                speed: "سريع",
+                                speed_en: "fast",
                                 path: [
                                   [24.7136, 46.6753],
                                   [24.7200, 46.6800],
@@ -440,17 +503,21 @@ function App() {
                                   [24.7500, 46.6600]
                                 ],
                                 intercept_points: [
-                                  { lat: 24.7300, lng: 46.6900, type: "blockade" }
+                                  { lat: 24.7300, lng: 46.6900, type: "نقطة إغلاق", type_en: "blockade" }
                                 ],
-                                reasoning: "High probability match with known associate hideout. Suspect frequent visitor."
+                                reasoning: "مسار مرجح نحو مخبأ شريك معروف، المشتبه به يتردد عليه باستمرار.",
+                                reasoning_en: "High probability match with known associate hideout. Suspect frequent visitor."
                               },
                               {
                                 route_id: "route_b",
-                                type: "ESCAPE",
-                                destination: "King Fahd Highway",
+                                type: "هروب",
+                                type_en: "ESCAPE",
+                                destination: "طريق الملك فهد السريع",
+                                destination_en: "King Fahd Highway",
                                 probability: 0.10,
                                 color: "orange",
-                                speed: "medium",
+                                speed: "متوسط",
+                                speed_en: "medium",
                                 path: [
                                   [24.7136, 46.6753],
                                   [24.7100, 46.6700],
@@ -458,17 +525,21 @@ function App() {
                                   [24.6900, 46.6500]
                                 ],
                                 intercept_points: [
-                                  { lat: 24.7000, lng: 46.6600, type: "checkpoint" }
+                                  { lat: 24.7000, lng: 46.6600, type: "نقطة تفتيش", type_en: "checkpoint" }
                                 ],
-                                reasoning: "Standard evasion route towards highway exit."
+                                reasoning: "مسار هروب تقليدي باتجاه مخرج الطريق السريع.",
+                                reasoning_en: "Standard evasion route towards highway exit."
                               },
                               {
                                 route_id: "route_c",
-                                type: "HOME",
-                                destination: "Al-Naseem Residence",
+                                type: "عودة للمنزل",
+                                type_en: "HOME",
+                                destination: "منزل حي النسيم",
+                                destination_en: "Al-Naseem Residence",
                                 probability: 0.05,
                                 color: "yellow",
-                                speed: "slow",
+                                speed: "بطيء",
+                                speed_en: "slow",
                                 path: [
                                   [24.7136, 46.6753],
                                   [24.7150, 46.6850],
@@ -476,7 +547,8 @@ function App() {
                                   [24.7250, 46.7200]
                                 ],
                                 intercept_points: [],
-                                reasoning: "Low probability return to registered address."
+                                reasoning: "احتمال ضعيف للعودة إلى العنوان المسجل.",
+                                reasoning_en: "Low probability return to registered address."
                               }
                             ]
                           };
@@ -505,7 +577,7 @@ function App() {
                 </div>
 
                 <div className="prose prose-sm max-w-none font-mono text-gray-700 leading-relaxed bg-gray-50 rounded-xl p-6 border border-gray-200">
-                  <TypewriterText text={result.modules.reasoning.report.detailed_narrative} delay={200} />
+                  <TypewriterText text={narrativeText} delay={200} />
                 </div>
               </motion.div>
 
@@ -520,10 +592,10 @@ function App() {
                   <h4 className="text-xs font-bold uppercase tracking-wider mb-2 text-gray-500">{isRTL ? "خريطة تكتيكية" : "Tactical Map"}</h4>
                   <div className="flex items-center gap-2 font-bold text-lg mb-2">
                     <MapPin size={18} className="text-red-500" />
-                    <span className="text-gray-900">{result.modules.GPS.lat.toFixed(4)}°N, {result.modules.GPS.lng.toFixed(4)}°E</span>
+                    <span className="text-gray-900">{result.modules.GPS.lat.toFixed(4)} N, {result.modules.GPS.lng.toFixed(4)} E</span>
                   </div>
                   <div className="text-xs text-gray-600">
-                    {result.modules.cctv_retrieval.cctv_nodes.length} {isRTL ? "كاميرات متصلة" : "cameras online"}
+                    {localizedCctvNodes.length} {t("كاميرات متصلة", "cameras online")}
                   </div>
                 </div>
 
@@ -534,20 +606,20 @@ function App() {
                   markers={[
                     {
                       position: [result.modules.GPS.lat, result.modules.GPS.lng],
-                      title: isRTL ? "موقع الحادث" : "Incident Location",
-                      description: `Confidence: ${result.modules.GPS.confidence.toFixed(2)}`,
+                      title: t("موقع الحادث", "Incident Location"),
+                      description: `${t("نسبة الثقة", "Confidence")}: ${result.modules.GPS.confidence.toFixed(2)}`,
                       type: 'gps'
                     },
-                    ...result.modules.cctv_retrieval.cctv_nodes.map(cam => ({
+                    ...localizedCctvNodes.map(cam => ({
                       position: [cam.gps.lat, cam.gps.lng] as [number, number],
-                      title: cam.business_name,
-                      description: `Distance: ${cam.distance}`,
+                      title: language === 'ar' ? cam.business_name : (cam.business_name_en || cam.business_name),
+                      description: `${t("المسافة", "Distance")}: ${language === 'ar' ? cam.distance : (cam.distance_en || cam.distance)}`,
                       type: 'camera' as const
                     }))
                   ]}
                   antPathPositions={[
                     [result.modules.GPS.lat, result.modules.GPS.lng],
-                    ...result.modules.cctv_retrieval.cctv_nodes.map(c => [c.gps.lat, c.gps.lng] as [number, number])
+                    ...localizedCctvNodes.map(c => [c.gps.lat, c.gps.lng] as [number, number])
                   ]}
                   predictionData={predictionResult}
                 />

@@ -35,6 +35,9 @@ export const ThreatDetection: React.FC<ThreatDetectionProps> = ({
   const colors = getThreatColor(threatLevel);
   const threats = detections.filter(d => d.threat_tag);
   const normal = detections.filter(d => !d.threat_tag);
+  const threatLabel = isRTL
+    ? ({ CRITICAL: 'حرج', HIGH: 'مرتفع', MEDIUM: 'متوسط', LOW: 'منخفض' } as Record<string, string>)[threatLevel.toUpperCase()] || threatLevel
+    : threatLevel;
 
   return (
     <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
@@ -54,7 +57,7 @@ export const ThreatDetection: React.FC<ThreatDetectionProps> = ({
           transition={{ delay: 0.5, type: 'spring', stiffness: 200 }}
           className={`px-4 py-2 ${colors.bg} text-white rounded-full font-bold text-sm`}
         >
-          {threatLevel}
+          {threatLabel}
         </motion.div>
       </div>
 

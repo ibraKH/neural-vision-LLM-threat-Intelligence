@@ -11,31 +11,38 @@ interface PredictionData {
         route_id: string;
         type: string;
         destination: string;
+        destination_en?: string;
         probability: number;
         color: string;
         speed: string;
+        speed_en?: string;
         path: [number, number][];
         intercept_points: Array<{
             lat: number;
             lng: number;
             type: string;
+            type_en?: string;
         }>;
         reasoning: string;
+        reasoning_en?: string;
+        type_en?: string;
     }>;
 }
 
 interface PredictionLayerProps {
     data: PredictionData;
     map: L.Map;
+    isRTL?: boolean;
 }
 
-const PredictionLayer: React.FC<PredictionLayerProps> = ({ data, map }) => {
+const PredictionLayer: React.FC<PredictionLayerProps> = ({ data, map, isRTL = false }) => {
 
     useEffect(() => {
         if (!map || !data) {
             return;
         }
 
+        const t = (ar?: string | null, en?: string | null) => (isRTL ? (ar || en || '') : (en || ar || ''));
         const layers: L.Layer[] = [];
 
         const fetchRouteGeometry = async (waypoints: [number, number][]): Promise<[number, number][]> => {
@@ -59,13 +66,15 @@ const PredictionLayer: React.FC<PredictionLayerProps> = ({ data, map }) => {
         const addPoliceStations = () => {
             const policeStations = [
                 {
-                    name: 'Olaya Police Station',
+                    name: 'مركز شرطة العليا',
+                    name_en: 'Olaya Police Station',
                     lat: 24.7150,
                     lng: 46.6770,
                     units: 3
                 },
                 {
-                    name: 'Al-Muruj Police Station',
+                    name: 'مركز شرطة المروج',
+                    name_en: 'Al-Muruj Police Station',
                     lat: 24.7100,
                     lng: 46.6720,
                     units: 2
@@ -98,15 +107,15 @@ const PredictionLayer: React.FC<PredictionLayerProps> = ({ data, map }) => {
                     <div className="font-sans min-w-[180px]">
                         <div className="flex items-center gap-2 mb-2">
                             <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="white" stroke="white" strokeWidth="0.5">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="white" stroke="white" strokeWidth="0.5">
                                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                                 </svg>
                             </div>
-                            <span className="font-bold text-gray-900">{station.name}</span>
+                            <span className="font-bold text-gray-900">{t(station.name, station.name_en)}</span>
                         </div>
                         <div className="text-xs text-gray-600">
-                            <p>Available Units: <span className="font-bold text-blue-600">{station.units}</span></p>
-                            <p className="mt-1 text-gray-500">Status: <span className="text-green-600">Active</span></p>
+                            <p>{t('الوحدات المتاحة', 'Available Units')}: <span className="font-bold text-blue-600">{station.units}</span></p>
+                            <p className="mt-1 text-gray-500">{t('الحالة', 'Status')}: <span className="text-green-600">{t('نشط', 'Active')}</span></p>
                         </div>
                     </div>
                 );
@@ -125,6 +134,9 @@ const PredictionLayer: React.FC<PredictionLayerProps> = ({ data, map }) => {
 
         const processRoutes = async () => {
             for (const route of data.routes) {
+                const routeType = t(route.type, route.type_en);
+                const routeDestination = t(route.destination, route.destination_en);
+                const reasoningText = t(route.reasoning, route.reasoning_en);
                 let color = '#f59e0b';
                 let className = 'animate-dash-medium';
                 let weight = 4;
@@ -187,12 +199,12 @@ const PredictionLayer: React.FC<PredictionLayerProps> = ({ data, map }) => {
                         <div className="font-sans min-w-[200px]">
                             <div className="flex items-center justify-between mb-2">
                                 <span className={`text-xs font-bold px-2 py-1 rounded-full ${route.probability > 0.7 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
-                                    {Math.round(route.probability * 100)}% Confidence
+                                    {Math.round(route.probability * 100)}% {t('ثقة', 'Confidence')}
                                 </span>
-                                <span className="text-xs text-gray-500">{route.type}</span>
+                                <span className="text-xs text-gray-500">{routeType}</span>
                             </div>
-                            <h3 className="font-bold text-gray-900 text-sm mb-1">{route.destination}</h3>
-                            <p className="text-xs text-gray-600 leading-relaxed">{route.reasoning}</p>
+                            <h3 className="font-bold text-gray-900 text-sm mb-1">{routeDestination}</h3>
+                            <p className="text-xs text-gray-600 leading-relaxed">{reasoningText}</p>
                         </div>
                     );
 

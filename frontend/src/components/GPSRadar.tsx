@@ -111,7 +111,7 @@ export const GPSRadar: React.FC<GPSRadarProps> = ({ lat, lng, confidence, isRTL 
               </span>
             </div>
             <div className="font-mono text-white text-lg font-bold">
-              {lat.toFixed(6)}°N, {lng.toFixed(6)}°E
+              {lat.toFixed(6)} N, {lng.toFixed(6)} E
             </div>
           </div>
           <div className="text-right">

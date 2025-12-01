@@ -1,6 +1,18 @@
 import json
 import os
-import openai
+import google.generativeai as genai
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+# Configure Gemini
+# Ensure GOOGLE_API_KEY is set in your environment variables
+if "GOOGLE_API_KEY" not in os.environ:
+    print("WARNING: GOOGLE_API_KEY not found in environment variables.")
+
+genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
 
 def clean_json_response(text):
     try:
@@ -13,65 +25,90 @@ def clean_json_response(text):
         return text
 
 def analyze_incident(context_data):
-    client = openai.OpenAI(
-        base_url="http://localhost:11500/v1",
-        api_key="ollama"
-    )
+    # Initialize Gemini Model
+    model = genai.GenerativeModel('gemini-flash-latest')
     
     system_prompt = """IDENTITY: You are Roya (Saudi Automated Quick Response), a strictly objective forensic AI. You analyze crime scene data.
 
+LANGUAGE: Default to Modern Standard Arabic for every human-readable field. Keep classification codes in English for downstream sorting, but provide Arabic labels. Also include full English mirrors in *_en objects.
+
 INPUT CONTEXT: You will receive JSON data containing:
+biometrics, objects, ocr, location, cctv.
 
-biometrics: (Who is there? Wanted/Unknown)
-
-objects: (What is there? Weapons, Cars, Smoke)
-
-ocr: (Where is it? Shop names, Street signs)
-
-location: (GPS)
-
-cctv: (Available Cameras)
-
-PRIORITY MATRIX (For Backend Sorting):
-
-CRITICAL: Weapon detected, Active Fight, Fire, Explosion, Terrorist Match (>90%).
-
-HIGH: Wanted Person (Non-violent), Stolen Vehicle, Suspicious Package, Night-time Loitering.
-
-MEDIUM: Infrastructure Hazard (Deep Pothole, Broken Streetlight), Vandalism.
-
-LOW: Littering, Parking Violation, Noise Complaint.
-
-ROUTING LOGIC:
-
-SECURITY: Crimes, Weapons, Violence -> Send to 911.
-
-MUNICIPAL: Potholes, Lights, Trash -> Send to 940 (Balady).
-
-CIVIL_DEFENSE: Fire, Smoke -> Send to 998.
-
-OUTPUT FORMAT (JSON ONLY - NO MARKDOWN): { "incident_id": "UUID", "timestamp": "ISO_STRING", "classification": { "priority": "CRITICAL" | "HIGH" | "MEDIUM" | "LOW", "domain": "SECURITY" | "MUNICIPAL" | "CIVIL_DEFENSE", "type": "STRING (e.g., ARMED_ROBBERY, POTHOLE_HAZARD)" }, "report": { "summary": "1-sentence tactical summary.", "detailed_narrative": "A formal paragraph describing the scene objectively. Mention specific evidence (e.g., 'Subject A holding object resembling a Glock 19').", "visual_evidence": ["List of items/text that justify the priority"] }, "action_plan": { "recommended_unit": "STRING (e.g., SWAT Team, Road Maintenance Crew)", "nearest_cctv": "ID of the closest camera from input" } }"""
-
+STRICT OUTPUT JSON FORMAT:
+You must output a valid JSON object with EXACTLY this structure:
+{
+  "language": "ar",
+  "incident_id": "UUID",
+  "timestamp": "ISO_STRING",
+  "classification": {
+    "priority": "CRITICAL" | "HIGH" | "MEDIUM" | "LOW",
+    "domain": "SECURITY" | "MUNICIPAL" | "CIVIL_DEFENSE",
+    "type": "STRING",
+    "labels": {
+      "priority_ar": "Arabic Priority",
+      "domain_ar": "Arabic Domain",
+      "type_ar": "Arabic Type"
+    }
+  },
+  "report": {
+    "summary": "Arabic tactical summary",
+    "detailed_narrative": "Arabic formal paragraph",
+    "visual_evidence": ["Arabic list"]
+  },
+  "report_en": {
+    "summary": "English summary",
+    "detailed_narrative": "English narrative",
+    "visual_evidence": ["English list"]
+  },
+  "action_plan": {
+    "recommended_unit": "Arabic Unit Name",
+    "nearest_cctv": "ID",
+    "notes": "Arabic notes"
+  },
+  "action_plan_en": {
+    "recommended_unit": "English Unit Name",
+    "nearest_cctv": "ID",
+    "notes": "English notes"
+  }
+}
+"""
     try:
-        response = client.chat.completions.create(
-            model="llama3.1",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": json.dumps(context_data)}
-            ],
-            temperature=0.0,
-            response_format={"type": "json_object"}
+        # Set safety settings to block few things as this is a security tool
+        safety_settings = {
+            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+        }
+
+        generation_config = genai.GenerationConfig(
+            response_mime_type="application/json",
+            temperature=0.0
+        )
+
+        chat = model.start_chat(history=[
+            {"role": "user", "parts": [system_prompt]}
+        ])
+        
+        response = chat.send_message(
+            json.dumps(context_data),
+            generation_config=generation_config,
+            safety_settings=safety_settings
         )
         
-        raw_content = response.choices[0].message.content
+        raw_content = response.text
         cleaned_content = clean_json_response(raw_content)
+        data = json.loads(cleaned_content)
+        if isinstance(data, dict):
+            data.setdefault("language", "ar")
+        return data
         
-        return json.loads(cleaned_content)
-        
-    except Exception:
+    except Exception as e:
+        print(f"Error in Gemini analysis: {e}")
         return {
             "error": "Failed to analyze incident",
-            "details": "Analysis failed"
+            "details": str(e)
         }
 
 if __name__ == "__main__":
@@ -113,10 +150,9 @@ if __name__ == "__main__":
         context_data = {
             "biometrics": [{"name": "Unknown", "match_confidence": 0.0}],
             "objects": ["Gun", "Mask", "Black Bag"],
-            "ocr": ["Bank AlJazira", "ATM"],
             "location": {"lat": 24.7136, "lng": 46.6753},
             "cctv": ["Cam-01", "Cam-02"]
         }
 
     result = analyze_incident(context_data)
-    print(json.dumps(result, indent=2))
+    print(json.dumps(result, indent=2, ensure_ascii=False))

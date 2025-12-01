@@ -159,7 +159,7 @@ const LeafletMap: React.FC<LeafletMapProps> = ({ center, zoom, markers, antPathP
     return (
         <div ref={mapContainerRef} className="w-full h-full z-0">
             {mapInstanceRef.current && predictionData && (
-                <PredictionLayer data={predictionData} map={mapInstanceRef.current} />
+                <PredictionLayer data={predictionData} map={mapInstanceRef.current} isRTL={isRTL} />
             )}
         </div>
     );

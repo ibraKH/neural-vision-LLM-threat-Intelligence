@@ -129,7 +129,10 @@ def run_pipeline(image_path):
         obj_det_data = results.get("object_detection", {})
         objects_list = []
         if "detections" in obj_det_data:
-             objects_list = [obj.get("class_name") for obj in obj_det_data["detections"]]
+            objects_list = [
+                obj.get("label") or obj.get("class_name") or obj.get("label_en")
+                for obj in obj_det_data["detections"]
+            ]
         
         ocr_data = results.get("ocr_environment", {}).get("text", [])
         
@@ -156,7 +159,8 @@ def run_pipeline(image_path):
         "timestamp": timestamp,
         "target_image": image_path,
         "modules": results,
-        "system_status": "READY_FOR_REASONING"
+        "system_status": "READY_FOR_REASONING",
+        "language": "ar"
     }
     
     return master_json

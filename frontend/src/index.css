@@ -208,7 +208,7 @@
 }
 
 .typing-cursor::after {
-  content: '▋';
+  content: '|';
   animation: cursor-blink 1s step-end infinite;
 }
 

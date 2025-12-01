@@ -2,10 +2,26 @@ import random
 from typing import List, Dict, Any
 MOCK_DB = {
     "suspect_123": {
-        "name": "Khalid Al-Otaibi",
-        "home_address": {"lat": 24.7333, "lng": 46.8000, "name": "Al-Naseem District (Home)"},
-        "registered_asset": {"lat": 24.8105, "lng": 46.5208, "name": "Al-Ammariyah (Istira'ah)"},
-        "associates": [{"lat": 24.5700, "lng": 46.6900, "name": "Al-Suwaidi (Cousin's House)"}]
+        "name": "خالد العتيبي",
+        "name_en": "Khalid Al-Otaibi",
+        "home_address": {
+            "lat": 24.7333,
+            "lng": 46.8000,
+            "name": "حي النسيم (المنزل)",
+            "name_en": "Al-Naseem District (Home)"
+        },
+        "registered_asset": {
+            "lat": 24.8105,
+            "lng": 46.5208,
+            "name": "استراحة العمارية",
+            "name_en": "Al-Ammariyah (Istira'ah)"
+        },
+        "associates": [{
+            "lat": 24.5700,
+            "lng": 46.6900,
+            "name": "السويدي (منزل ابن العم)",
+            "name_en": "Al-Suwaidi (Cousin's House)"
+        }]
     }
 }
 
@@ -46,21 +62,30 @@ def predict_movement(start_coords: tuple, suspect_id: str = "suspect_123") -> Di
     """
     profile = get_suspect_profile(suspect_id)
     predictions = []
-    highway_ramp = {"lat": start_coords[0] + 0.02, "lng": start_coords[1] + 0.01, "name": "Northern Ring Rd On-Ramp"}
+    highway_ramp = {
+        "lat": start_coords[0] + 0.02,
+        "lng": start_coords[1] + 0.01,
+        "name": "مدخل الطريق الدائري الشمالي",
+        "name_en": "Northern Ring Rd On-Ramp"
+    }
     route_a_path = interpolate_points(start_coords, (highway_ramp["lat"], highway_ramp["lng"]), num_points=10)
     
     predictions.append({
         "route_id": "ROUTE-A",
-        "type": "ESCAPE",
+        "type": "هروب",
+        "type_en": "ESCAPE",
         "destination": highway_ramp["name"],
+        "destination_en": highway_ramp.get("name_en", highway_ramp["name"]),
         "probability": 0.45,
         "color": "orange",
-        "speed": "FAST",
+        "speed": "سريع",
+        "speed_en": "FAST",
         "path": route_a_path,
         "intercept_points": [
-            {"lat": route_a_path[5][0], "lng": route_a_path[5][1], "type": "CHECKPOINT"}
+            {"lat": route_a_path[5][0], "lng": route_a_path[5][1], "type": "نقطة تفتيش", "type_en": "CHECKPOINT"}
         ],
-        "reasoning": "Immediate flight response towards high-speed infrastructure."
+        "reasoning": "استجابة هروب فورية نحو طريق سريع يسمح بالانسحاب بسرعة.",
+        "reasoning_en": "Immediate flight response towards high-speed infrastructure."
     })
 
     hideout = profile["registered_asset"]
@@ -70,36 +95,45 @@ def predict_movement(start_coords: tuple, suspect_id: str = "suspect_123") -> Di
     
     predictions.append({
         "route_id": "ROUTE-B",
-        "type": "HIDEOUT",
+        "type": "مخبأ",
+        "type_en": "HIDEOUT",
         "destination": hideout["name"],
+        "destination_en": hideout.get("name_en", hideout["name"]),
         "probability": 0.89,
         "color": "red",
-        "speed": "FAST",
+        "speed": "سريع",
+        "speed_en": "FAST",
         "path": route_b_path,
         "intercept_points": [
-            {"lat": intercept_pt[0], "lng": intercept_pt[1], "type": "INTERCEPT"}
+            {"lat": intercept_pt[0], "lng": intercept_pt[1], "type": "نقطة إيقاف", "type_en": "INTERCEPT"}
         ],
-        "reasoning": "Historical data indicates suspect frequents this location. Remote area suitable for hiding."
+        "reasoning": "البيانات التاريخية تشير إلى تردد المشتبه به على هذا الموقع. منطقة معزولة مناسبة للاختباء.",
+        "reasoning_en": "Historical data indicates suspect frequents this location. Remote area suitable for hiding."
     })
     home = profile["home_address"]
     route_c_path = interpolate_points(start_coords, (home["lat"], home["lng"]), num_points=25)
     
     predictions.append({
         "route_id": "ROUTE-C",
-        "type": "HOME",
+        "type": "العودة للمنزل",
+        "type_en": "HOME",
         "destination": home["name"],
+        "destination_en": home.get("name_en", home["name"]),
         "probability": 0.15,
         "color": "yellow",
-        "speed": "SLOW",
+        "speed": "بطيء",
+        "speed_en": "SLOW",
         "path": route_c_path,
         "intercept_points": [],
-        "reasoning": "Too obvious. Suspect likely to avoid known primary residence."
+        "reasoning": "خيار واضح للغاية، ومن غير المرجح أن يعود المشتبه به إلى العنوان الأساسي المعروف.",
+        "reasoning_en": "Too obvious. Suspect likely to avoid known primary residence."
     })
     predictions.sort(key=lambda x: x["probability"], reverse=True)
     
     return {
         "prediction_id": f"PRED-{random.randint(1000, 9999)}",
         "suspect_id": suspect_id,
+        "language": "ar",
         "timestamp": "2025-12-01T13:15:00Z",
         "routes": predictions
     }
@@ -108,4 +142,4 @@ if __name__ == "__main__":
     scene = (24.6953, 46.6822)
     result = predict_movement(scene)
     import json
-    print(json.dumps(result, indent=2))
+    print(json.dumps(result, indent=2, ensure_ascii=False))
