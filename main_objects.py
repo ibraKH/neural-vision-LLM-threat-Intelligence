@@ -21,6 +21,46 @@ CUSTOM_VOCABULARY = [
     "gun", "pistol", "handgun", "revolver", "rifle", "shotgun", "firearm", "weapon", "assault rifle", "machine gun"
 ]
 
+AR_LABELS = {
+    "person": "شخص",
+    "man": "رجل",
+    "woman": "امرأة",
+    "child": "طفل",
+    "bicycle": "دراجة هوائية",
+    "car": "سيارة",
+    "motorcycle": "دراجة نارية",
+    "bus": "حافلة",
+    "truck": "شاحنة",
+    "backpack": "حقيبة ظهر",
+    "handbag": "حقيبة يد",
+    "suitcase": "حقيبة سفر",
+    "luggage": "أمتعة",
+    "knife": "سكين",
+    "kitchen knife": "سكين مطبخ",
+    "dagger": "خنجر",
+    "blade": "نصل",
+    "sharp object": "جسم حاد",
+    "scissors": "مقص",
+    "shears": "مقص كبير",
+    "gun": "سلاح ناري",
+    "pistol": "مسدس",
+    "handgun": "مسدس يدوي",
+    "revolver": "مسدس دوار",
+    "rifle": "بندقية",
+    "shotgun": "بندقية صيد",
+    "firearm": "سلاح ناري",
+    "weapon": "سلاح",
+    "assault rifle": "بندقية هجومية",
+    "machine gun": "رشاش"
+}
+
+THREAT_LEVEL_LABELS = {
+    "HIGH": "مرتفع",
+    "LOW": "منخفض",
+    "MEDIUM": "متوسط",
+    "CRITICAL": "حرج"
+}
+
 # Threat definitions
 HIGH_THREAT_LABELS = {
     "knife", "kitchen knife", "dagger", "blade", "sharp object",
@@ -28,13 +68,16 @@ HIGH_THREAT_LABELS = {
     "gun", "pistol", "handgun", "revolver", "rifle", "shotgun", "firearm", "weapon", "assault rifle", "machine gun"
 }
 
+def translate_label(label: str) -> str:
+    return AR_LABELS.get(label.lower(), label)
+
 def calculate_threat(detections):
-    detected_labels = [d['label'] for d in detections]
     threat_indices = set()
     
     has_high_threat = False
-    for i, label in enumerate(detected_labels):
-        if label in HIGH_THREAT_LABELS:
+    for i, det in enumerate(detections):
+        label_en = det.get('label_en', '').lower()
+        if label_en in HIGH_THREAT_LABELS:
             has_high_threat = True
             threat_indices.add(i)
     
@@ -96,12 +139,15 @@ def main():
         cls_id = int(box.cls[0])
         
         if hasattr(model, 'names'):
-             label = result.names[cls_id]
+            label_en = result.names[cls_id]
         else:
-             label = str(cls_id)
+            label_en = str(cls_id)
+
+        label_localized = translate_label(label_en)
 
         parsed_detections.append({
-            "label": label,
+            "label": label_localized,
+            "label_en": label_en,
             "class_id": cls_id,
             "confidence": round(conf, 2),
             "box": {
@@ -118,6 +164,7 @@ def main():
     for i, det in enumerate(parsed_detections):
         final_detections.append({
             "label": det["label"],
+            "label_en": det.get("label_en", det["label"]),
             "confidence": det["confidence"],
             "box": det["box"],
             "threat_tag": i in threat_indices
@@ -132,12 +179,13 @@ def main():
         },
         "summary": {
             "total_objects": len(final_detections),
-            "threat_level": threat_level
+            "threat_level": threat_level,
+            "threat_level_label": THREAT_LEVEL_LABELS.get(threat_level, threat_level)
         },
         "detections": final_detections
     }
 
-    print(json.dumps(output, indent=2))
+    print(json.dumps(output, indent=2, ensure_ascii=False))
 
 if __name__ == "__main__":
     main()
