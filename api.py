@@ -59,7 +59,11 @@ async def analyze_image(file: UploadFile = File(...)):
         result = await run_in_threadpool(main_pipeline.run_pipeline, file_path)
 
         image_url = f"http://localhost:8000/static/uploads/{unique_filename}"
+        annotated_filename = f"{os.path.splitext(unique_filename)[0]}_annotated.jpg"
+        annotated_image_url = f"http://localhost:8000/static/uploads/{annotated_filename}"
+        
         result["image_url"] = image_url
+        result["annotated_image_url"] = annotated_image_url
         result["report_id"] = str(uuid.uuid4())
         result["processed_at"] = result.get("timestamp")
         result.setdefault("language", "ar")
