@@ -9,6 +9,7 @@ from datetime import datetime
 import face_recognition
 import numpy as np
 from PIL import Image
+from backend.app.core import config
 
 class BiometricAnalyzer:
     def __init__(self, db_path="biometric_dataset"):
@@ -95,9 +96,8 @@ class BiometricAnalyzer:
 
     def _save_face_crop(self, image_arr, box, face_id):
         try:
-            crops_dir = "crops"
-            if not os.path.exists(crops_dir):
-                os.makedirs(crops_dir)
+            crops_dir = config.CROPS_DIR
+            crops_dir.mkdir(parents=True, exist_ok=True)
 
             top, right, bottom, left = box
             face_img = image_arr[top:bottom, left:right]
@@ -203,8 +203,8 @@ class BiometricAnalyzer:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Biometric Identity Agent")
-    parser.add_argument("--input", "-i", default=os.path.join("inputs", "target.jpg"), help="Path to input image")
-    parser.add_argument("--db", "-d", default="biometric_dataset", help="Path to dataset directory")
+    parser.add_argument("--input", "-i", default=str(config.INPUTS_DIR / "target.jpg"), help="Path to input image")
+    parser.add_argument("--db", "-d", default=str(config.BIOMETRIC_DATASET_DIR), help="Path to dataset directory")
     
     args = parser.parse_args()
     

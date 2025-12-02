@@ -4,7 +4,8 @@ import sys
 import logging
 import os
 import numpy as np
-from location_recognizer import LocationRecognizer
+from backend.app.modules.gps.location_recognizer import LocationRecognizer
+from backend.app.core import config
 
 logging.basicConfig(
     level=logging.INFO,
@@ -25,9 +26,9 @@ if __name__ == "__main__":
     if not image_path:
         logger.info("No image path provided. Running default initialization test.")
         recognizer = LocationRecognizer(
-            csv_file='data/dataset.csv',
-            image_folder='data/images/',
-            cache_file='database_cache.pkl'
+            csv_file=str(config.DATA_DIR / 'dataset.csv'),
+            image_folder=str(config.DATA_DIR / 'images'),
+            cache_file=str(config.DATABASE_CACHE_PATH)
         )
         logger.info("LocationRecognizer initialized successfully")
         sys.exit(0)
@@ -38,9 +39,9 @@ if __name__ == "__main__":
 
     try:
         recognizer = LocationRecognizer(
-            csv_file='data/dataset.csv',
-            image_folder='data/images/',
-            cache_file='database_cache.pkl'
+            csv_file=str(config.DATA_DIR / 'dataset.csv'),
+            image_folder=str(config.DATA_DIR / 'images'),
+            cache_file=str(config.DATABASE_CACHE_PATH)
         )
         
         result = recognizer.find_location(image_path)

@@ -14,7 +14,8 @@ frontend/.env.development
 frontend/.env.production
 
 data/
-cctv/
+backend/data/
+backend/data/cctv/
 backend/temp_*
 biometric_dataset/
 crops/

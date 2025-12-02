@@ -9,8 +9,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
-import main_pipeline
-import main_prediction
+from backend.app.pipeline import main_pipeline
+from backend.app.modules.prediction import main_prediction
+from backend.app.core import config
 
 class PredictionRequest(BaseModel):
     start_coords: tuple
@@ -26,11 +27,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-STATIC_DIR = "static"
-UPLOADS_DIR = os.path.join(STATIC_DIR, "uploads")
-os.makedirs(UPLOADS_DIR, exist_ok=True)
+# Use config for paths
+STATIC_DIR = config.STATIC_DIR
+UPLOADS_DIR = STATIC_DIR / "uploads"
+UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 REPORT_DATABASE = []
 
@@ -51,12 +53,13 @@ async def analyze_image(file: UploadFile = File(...)):
     try:
         file_extension = os.path.splitext(file.filename)[1]
         unique_filename = f"{uuid.uuid4()}{file_extension}"
-        file_path = os.path.join(UPLOADS_DIR, unique_filename)
+        file_path = UPLOADS_DIR / unique_filename
 
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        result = await run_in_threadpool(main_pipeline.run_pipeline, file_path)
+        # Pass string path to pipeline
+        result = await run_in_threadpool(main_pipeline.run_pipeline, str(file_path))
 
         image_url = f"http://localhost:8000/static/uploads/{unique_filename}"
         annotated_filename = f"{os.path.splitext(unique_filename)[0]}_annotated.jpg"
@@ -115,3 +118,4 @@ async def predict_location_endpoint(request: PredictionRequest):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+

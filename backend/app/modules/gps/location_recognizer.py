@@ -15,10 +15,10 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class LocationRecognizer:
-    def __init__(self, csv_file: str, image_folder: str, cache_file: str = 'database_cache.pkl'):
+    def __init__(self, csv_file: str, image_folder: str, cache_file: str = None):
         self.csv_file = csv_file
         self.image_folder = image_folder
-        self.cache_file = cache_file
+        self.cache_file = cache_file # Defaults handled by caller or config
         self.database_matrix = None
         self.database_metadata = None
 

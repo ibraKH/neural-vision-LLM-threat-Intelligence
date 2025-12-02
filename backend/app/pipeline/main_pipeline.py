@@ -8,6 +8,8 @@ import sys
 import argparse
 import logging
 
+from backend.app.core import config
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -16,16 +18,21 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def run_module(script_name, args):
-    command = [sys.executable, script_name] + args
+    command = [sys.executable, str(script_name)] + args
     logger.info(f"Running module: {script_name} with args: {args}")
     
+    # Ensure PYTHONPATH includes the project root
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(config.BASE_DIR) + os.pathsep + env.get("PYTHONPATH", "")
+
     try:
         result = subprocess.run(
             command,
             capture_output=True,
             text=True,
             encoding='utf-8',
-            check=False
+            check=False,
+            env=env
         )
         
         if result.returncode != 0:
@@ -65,23 +72,24 @@ def run_pipeline(image_path):
         logger.error(f"Image not found: {image_path}")
         return {"error": "Image not found"}
 
-    base_dir = os.path.dirname(os.path.abspath(__file__))
+    # Define module paths using config
+    modules_dir = config.BACKEND_DIR / "app" / "modules"
     
     modules = {
         "GPS": {
-            "script": os.path.join(base_dir, "model.py"),
+            "script": modules_dir / "gps" / "model.py",
             "args": [image_path]
         },
         "biometrics": {
-            "script": os.path.join(base_dir, "main_biometrics.py"),
+            "script": modules_dir / "biometrics" / "main_biometrics.py",
             "args": ["--input", image_path]
         },
         "object_detection": {
-            "script": os.path.join(base_dir, "main_objects.py"),
+            "script": modules_dir / "objects" / "main_objects.py",
             "args": [image_path, "--output", os.path.splitext(image_path)[0] + "_annotated.jpg"]
         },
         "ocr_environment": {
-            "script": os.path.join(base_dir, "main_ocr.py"),
+            "script": modules_dir / "ocr" / "main_ocr.py",
             "args": [image_path]
         }
     }
@@ -112,7 +120,7 @@ def run_pipeline(image_path):
     lng = gps_data.get("lng")
 
     if lat is not None and lng is not None:
-        cctv_script = os.path.join(base_dir, "main_cctv_retrieval.py")
+        cctv_script = modules_dir / "cctv" / "main_cctv_retrieval.py"
         # Ensure lat/lng are strings for command line arguments
         cctv_args = ["--lat", str(lat), "--lng", str(lng)]
         cctv_result = run_module(cctv_script, cctv_args)
@@ -122,7 +130,7 @@ def run_pipeline(image_path):
         results["cctv_retrieval"] = {"status": "skipped", "message": "Missing GPS data"}
 
     try:
-        import main_reasoning
+        from backend.app.modules.reasoning import main_reasoning
         
         biometrics_data = results.get("biometrics", {}).get("matches", [])
         

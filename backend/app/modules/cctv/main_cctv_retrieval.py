@@ -7,7 +7,9 @@ import io
 
 # Force UTF-8 for stdout
 sys.stdout.reconfigure(encoding='utf-8')
-from location_recognizer import LocationRecognizer
+
+from backend.app.core import config
+from backend.app.modules.gps.location_recognizer import LocationRecognizer
 
 CCTV_NAME_MAP = {
     "Al-Dawaa Pharmacy #291": "صيدلية الدواء رقم 291",
@@ -50,9 +52,9 @@ def get_coordinates_from_image(image_path):
         
     try:
         recognizer = LocationRecognizer(
-            csv_file='data/dataset.csv',
-            image_folder='data/images/',
-            cache_file='database_cache.pkl'
+            csv_file=str(config.DATA_DIR / 'dataset.csv'),
+            image_folder=str(config.DATA_DIR / 'images'),
+            cache_file=str(config.DATABASE_CACHE_PATH)
         )
         
         result = recognizer.find_location(image_path)
@@ -89,7 +91,7 @@ def main():
         target_lng = args.lng
 
     # Load Mock Database
-    registry_path = os.path.join('cctv', 'cctv_registry.json')
+    registry_path = config.CCTV_DIR / 'cctv_registry.json'
     cctv_registry = load_registry(registry_path)
 
     results = []

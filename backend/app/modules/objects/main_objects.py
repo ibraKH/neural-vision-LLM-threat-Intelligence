@@ -6,7 +6,9 @@ import cv2
 from datetime import datetime
 from ultralytics import YOLO
 
-MODEL_NAME = "yolov8x-worldv2.pt" 
+from backend.app.core import config
+
+MODEL_NAME = str(config.MODELS_DIR / "yolov8x-worldv2.pt") 
 
 # Custom Vocabulary for YOLO-World
 CUSTOM_VOCABULARY = [
@@ -99,9 +101,9 @@ def main():
     except Exception as e:
         sys.stderr.write(f"Warning: Failed to load {MODEL_NAME}. Falling back to yolov8l-world.pt.\nError: {e}\n")
         try:
-            model = YOLO("yolov8l-world.pt")
+            model = YOLO(str(config.MODELS_DIR / "yolov8l-world.pt"))
         except:
-             model = YOLO("yolov8n.pt")
+             model = YOLO(str(config.MODELS_DIR / "yolov8n.pt"))
 
     if "world" in MODEL_NAME:
         try:
