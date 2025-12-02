@@ -430,18 +430,16 @@ function App() {
                   <motion.div
                     initial={{ x: -50, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
-                    transition={{ delay: 0.7 }}
+                    transition={{ delay: 0.55 }}
                   >
                     <ThreatDetection
                       detections={localizedDetections}
-                      threatLevel={result.modules.object_detection.summary.threat_level}
+                      threatLevel={result.modules.object_detection?.summary?.threat_level || 'LOW'}
                       isRTL={isRTL}
+                      imageUrl={result.image_url}
                     />
                   </motion.div>
-                </div>
 
-                {/* Right Column */}
-                <div className="space-y-6">
                   {/* CCTV Network */}
                   <motion.div
                     initial={{ x: 50, opacity: 0 }}

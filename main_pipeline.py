@@ -78,7 +78,7 @@ def run_pipeline(image_path):
         },
         "object_detection": {
             "script": os.path.join(base_dir, "main_objects.py"),
-            "args": [image_path]
+            "args": [image_path, "--output", os.path.splitext(image_path)[0] + "_annotated.jpg"]
         },
         "ocr_environment": {
             "script": os.path.join(base_dir, "main_ocr.py"),
