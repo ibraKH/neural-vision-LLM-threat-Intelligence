@@ -1,50 +1,49 @@
-# ResNet Geolocation
+# Roya 
 
-You see a photo from Saudi Arabia. A street in Riyadh, a mountain road in Taif, a coastal view. But where exactly?
+> *A hackathon idea*
 
-Thousands of images circulate daily across the Kingdom, yet pinpointing their exact location remains a challenge. I built this to solve that. Give it an image from Saudi Arabia, and it returns precise GPS coordinates.
+I engineered a modular pipeline that acts like a digital forensic team. It runs locally, it's fast, and it's smart.
 
-## How I Built It
+### 1. GPS Geolocation (The "Where")
+I trained a custom **ResNet50** model on thousands of Saudi street views. It looks at a mountain in Taif or a building in Riyadh and gives me exact coordinates. No metadata needed. It's like having a local guide trapped in a GPU.
 
-I trained a ResNet50 model to recognize Saudi locations the way we recognize faces. Each street view, building, and landscape becomes a unique fingerprint 2048 numbers that capture its visual essence. When you query an image, the system finds the closest match in my Saudi reference database and returns the exact GPS coordinates.
+### 2. Biometrics (The "Who")
+Uses advanced face recognition to match suspects against a "wanted" database.
 
-**Built for Saudi Arabia. Simple. Fast. Accurate.**
+### 3. Threat Detection (The "What")
+I implemented a **YOLO**-based object detection system that spots weapons (guns, knives) instantly.
 
-## Quick Start
+### 4. OCR Environment (The "Context")
+Reads Arabic and English text from signs, license plates, and documents using **PaddleOCR**. It adds context to the location—reading shop names to verify the GPS.
 
+### 5. CCTV Retrieval (The "Grid")
+Once we know the location, I simulate a connection to the National Camera Registry to pull up nearby surveillance nodes. It calculates distances and coverage angles.
+
+### 6. Reasoning Engine (The "Why")
+I added **Llama 3.1** to analyze all this aggregated data. It writes a full intelligence report, suggests an action plan, and even predicts suspect movement based on the terrain.
+
+## The Frontend
+
+*   **React + Vite**
+*   **Tailwind CSS**
+*   **Framer Motion**
+*   **Leaflet Maps**
+
+## How to Run It
+
+**1. Start the backend:**
 ```bash
-pip install -r requirements.txt
+cd backend
+python -m app.api.api
 ```
 
-```python
-from model import LocationRecognizer
-
-recognizer = LocationRecognizer(
-    csv_file='data/dataset.csv',
-    image_folder='data/images/',
-    cache_file='database_cache.pkl'
-)
-
-result = recognizer.find_location('mystery_photo.jpg')
-print(f"Found at: {result['lat']}, {result['lng']}")
+**2. Start the Frontend:**
+```bash
+cd frontend
+npm run dev
 ```
 
-## Data Format
-
-```
-data/
-├── dataset.csv          # filename, pano_id, lat, lng
-└── images/             # reference images
-```
-
-## Under the Hood
-
-ResNet50 → Feature Extraction → Cosine Similarity → GPS Prediction
-
-The model caches everything for speed. First run builds the database, then queries are instant.
-
-## Stack
-
-Python • PyTorch • ResNet50 • NumPy • scikit-learn
+**3. Analyze:**
+Open `http://localhost:5173`, drag in an image, and watch the magic happen.
 
 ---
