@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import LeafletMap from './LeafletMap';
-import { MapPin, Camera } from 'lucide-react';
+import { Camera } from 'lucide-react';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
-import { GPSRadar } from './components/GPSRadar';
+
 import { CCTVNetwork } from './components/CCTVNetwork';
 import { SuspectProfile } from './components/SuspectProfile';
-import { ThreatDetection } from './components/ThreatDetection';
+
 import { AuthSelection } from './components/auth/AuthSelection';
 import { NafathLogin } from './components/auth/NafathLogin';
 import { GovLogin } from './components/auth/GovLogin'
@@ -145,8 +145,7 @@ function App() {
     : '';
   const narrativeText = result?.modules?.reasoning?.report ? t(result.modules.reasoning.report.detailed_narrative, result.modules.reasoning.report_en?.detailed_narrative) : '';
 
-  const responseUnitText = result?.modules?.reasoning?.action_plan ? t(result.modules.reasoning.action_plan.recommended_unit, result.modules.reasoning.action_plan_en?.recommended_unit) : '';
-  const nearestCctvText = result?.modules?.reasoning?.action_plan ? t(result.modules.reasoning.action_plan.nearest_cctv, result.modules.reasoning.action_plan_en?.nearest_cctv) : '';
+
   const localizedCctvNodes = result?.modules?.cctv_retrieval?.cctv_nodes
     ? result.modules.cctv_retrieval.cctv_nodes.map((node) => ({
       ...node,
@@ -154,12 +153,7 @@ function App() {
       distance: language === 'ar' ? node.distance : (node.distance_en || node.distance),
     }))
     : [];
-  const localizedDetections = result?.modules?.object_detection?.detections
-    ? result.modules.object_detection.detections.map(det => ({
-      ...det,
-      label: language === 'ar' ? det.label : (det.label_en || det.label),
-    }))
-    : [];
+
   const primaryMatch = result?.modules?.biometrics?.matches?.[0];
   const localizedMatchInfo = primaryMatch
     ? {

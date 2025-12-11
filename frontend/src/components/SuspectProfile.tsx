@@ -20,7 +20,7 @@ interface SuspectProfileProps {
 
 export const SuspectProfile: React.FC<SuspectProfileProps> = ({
   info,
-  confidence,
+
   previewImage,
   isRTL = false
 }) => {
