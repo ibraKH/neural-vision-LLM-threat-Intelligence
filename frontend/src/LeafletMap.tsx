@@ -41,12 +41,12 @@ interface LeafletMapProps {
         description: string;
         type: 'gps' | 'camera';
     }>;
-    antPathPositions: [number, number][];
+    antPathPositions?: [number, number][];
     isRTL: boolean;
     predictionData?: PredictionData | null;
 }
 
-const LeafletMap: React.FC<LeafletMapProps> = ({ center, zoom, markers, antPathPositions, isRTL, predictionData }) => {
+const LeafletMap: React.FC<LeafletMapProps> = ({ center, zoom, markers, antPathPositions = [], isRTL, predictionData }) => {
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<L.Map | null>(null);
 

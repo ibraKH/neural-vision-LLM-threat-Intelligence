@@ -8,7 +8,7 @@ interface AuthSelectionProps {
 
 export const AuthSelection: React.FC<AuthSelectionProps> = ({ onSelectType, isRTL = true }) => {
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col items-center justify-center p-6 relative overflow-hidden">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col items-center justify-center p-6 pt-24 relative overflow-hidden">
             {/* Background Decor */}
             <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
                 <div className="absolute -top-[20%] -right-[10%] w-[600px] h-[600px] rounded-full bg-primary/5 blur-3xl" />
@@ -40,7 +40,7 @@ export const AuthSelection: React.FC<AuthSelectionProps> = ({ onSelectType, isRT
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.1 }}
                     onClick={() => onSelectType('user')}
-                    className="group relative bg-white p-8 rounded-3xl shadow-lg border-2 border-transparent hover:border-primary/20 hover:shadow-2xl transition-all duration-300 text-right flex flex-col items-center md:items-start"
+                    className="group relative bg-white p-8 rounded-3xl shadow-[0_4px_24px_rgba(0,0,0,0.06)] border-2 border-transparent ring-1 ring-black/5 hover:border-[#609966]/20 hover:shadow-2xl transition-all duration-300 text-right flex flex-col items-center md:items-start"
                 >
                     <h3 className="text-2xl font-bold text-gray-900 mb-2">
                         {isRTL ? "أفراد / مقيمين" : "Individuals / Residents"}
@@ -50,7 +50,7 @@ export const AuthSelection: React.FC<AuthSelectionProps> = ({ onSelectType, isRT
                             ? "الدخول عبر النفاذ الوطني الموحد (نفاذ) للوصول إلى الخدمات الشخصية"
                             : "Login via National Single Sign-On (Nafath) to access personal services"}
                     </p>
-                    <div className="mt-auto w-full py-3 bg-gray-50 text-gray-900 font-semibold rounded-xl group-hover:bg-primary group-hover:text-white transition-colors text-center">
+                    <div className="mt-auto w-full py-3 bg-gray-50 text-gray-900 font-semibold rounded-xl group-hover:bg-[#609966] group-hover:text-white transition-colors text-center">
                         {isRTL ? "دخول" : "Login"}
                     </div>
                 </motion.button>
@@ -61,7 +61,7 @@ export const AuthSelection: React.FC<AuthSelectionProps> = ({ onSelectType, isRT
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.2 }}
                     onClick={() => onSelectType('gov')}
-                    className="group relative bg-white p-8 rounded-3xl shadow-lg border-2 border-transparent hover:border-[#609966]/20 hover:shadow-2xl transition-all duration-300 text-right flex flex-col items-center md:items-start"
+                    className="group relative bg-white p-8 rounded-3xl shadow-[0_4px_24px_rgba(0,0,0,0.06)] border-2 border-transparent ring-1 ring-black/5 hover:border-[#609966]/20 hover:shadow-2xl transition-all duration-300 text-right flex flex-col items-center md:items-start"
                 >
                     <h3 className="text-2xl font-bold text-gray-900 mb-2">
                         {isRTL ? "جهات حكومية" : "Government Entities"}
