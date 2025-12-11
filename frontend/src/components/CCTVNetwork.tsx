@@ -37,7 +37,7 @@ export const CCTVNetwork: React.FC<CCTVNetworkProps> = ({ nodes, isRTL = false }
   }, [nodes]);
 
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+    <div className="bg-white rounded-2xl p-6 shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-200 ring-1 ring-black/5">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -62,7 +62,7 @@ export const CCTVNetwork: React.FC<CCTVNetworkProps> = ({ nodes, isRTL = false }
           <span className="text-sm font-bold text-green-600">{isRTL ? 'مباشر' : 'LIVE'}</span>
         </motion.div>
       </div>
-      
+
       {/* Camera List */}
       <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
         <AnimatePresence>
@@ -78,16 +78,14 @@ export const CCTVNetwork: React.FC<CCTVNetworkProps> = ({ nodes, isRTL = false }
                   x: 0
                 }}
                 transition={{ delay: index * 0.4 }}
-                className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
-                  isActive
-                    ? 'bg-blue-50 border-blue-200'
-                    : 'bg-gray-50 border-gray-200'
-                }`}
+                className={`flex items-center justify-between p-3 rounded-lg border transition-all ${isActive
+                  ? 'bg-green-50 border-green-200'
+                  : 'bg-gray-50 border-gray-200'
+                  }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ${
-                    isActive ? 'bg-blue-500' : 'bg-gray-400'
-                  }`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ${isActive ? 'bg-[#609966]' : 'bg-gray-400'
+                    }`}>
                     {node.rank}
                   </div>
                   <div>

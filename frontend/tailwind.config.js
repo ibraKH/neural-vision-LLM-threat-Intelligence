@@ -13,7 +13,7 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
-        arabic: ['Tajawal', 'sans-serif'],
+        arabic: ['DIN', 'sans-serif'],
       },
       animation: {
         'scan': 'scan 2s linear infinite',
