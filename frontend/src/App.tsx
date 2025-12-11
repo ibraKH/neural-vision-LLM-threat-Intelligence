@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import LeafletMap from './LeafletMap';
-import { MapPin } from 'lucide-react';
+import { MapPin, Camera } from 'lucide-react';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { TimelineJourney, createTimelineFromAnalysis } from './components/TimelineJourney';
@@ -9,6 +9,9 @@ import { GPSRadar } from './components/GPSRadar';
 import { CCTVNetwork } from './components/CCTVNetwork';
 import { SuspectProfile } from './components/SuspectProfile';
 import { ThreatDetection } from './components/ThreatDetection';
+import { AuthSelection } from './components/auth/AuthSelection';
+import { NafathLogin } from './components/auth/NafathLogin';
+import { GovLogin } from './components/auth/GovLogin';
 
 interface AnalysisResult {
   pipeline_id: string;
@@ -139,7 +142,7 @@ function App() {
     ? t(result.modules.reasoning.classification.labels?.priority_ar, result.modules.reasoning.classification.priority)
     : '';
   const narrativeText = result?.modules?.reasoning?.report ? t(result.modules.reasoning.report.detailed_narrative, result.modules.reasoning.report_en?.detailed_narrative) : '';
-  const summaryText = result?.modules?.reasoning?.report ? t(result.modules.reasoning.report.summary, result.modules.reasoning.report_en?.summary) : '';
+
   const responseUnitText = result?.modules?.reasoning?.action_plan ? t(result.modules.reasoning.action_plan.recommended_unit, result.modules.reasoning.action_plan_en?.recommended_unit) : '';
   const nearestCctvText = result?.modules?.reasoning?.action_plan ? t(result.modules.reasoning.action_plan.nearest_cctv, result.modules.reasoning.action_plan_en?.nearest_cctv) : '';
   const localizedCctvNodes = result?.modules?.cctv_retrieval?.cctv_nodes
@@ -233,6 +236,24 @@ function App() {
     setLanguage(prev => prev === 'en' ? 'ar' : 'en');
   };
 
+  const [view, setView] = useState<'auth-select' | 'auth-user' | 'auth-gov' | 'dashboard'>('auth-select');
+
+  const handleLoginSuccess = () => {
+    setView('dashboard');
+  };
+
+  if (view === 'auth-select') {
+    return <AuthSelection onSelectType={(type) => setView(type === 'user' ? 'auth-user' : 'auth-gov')} isRTL={isRTL} />;
+  }
+
+  if (view === 'auth-user') {
+    return <NafathLogin onLogin={handleLoginSuccess} onBack={() => setView('auth-select')} />;
+  }
+
+  if (view === 'auth-gov') {
+    return <GovLogin onLogin={handleLoginSuccess} onBack={() => setView('auth-select')} />;
+  }
+
   return (
     <div className={cn(
       "min-h-screen bg-white text-gray-900 font-sans overflow-x-hidden transition-all duration-300",
@@ -276,6 +297,9 @@ function App() {
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
                 <div className="z-10 flex flex-col items-center text-center p-8">
+                  <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6 shadow-sm group-hover:scale-110 transition-transform duration-300">
+                    <Camera size={40} className="text-primary" />
+                  </div>
                   <h2 className="text-2xl font-bold text-gray-900 mb-2">{isRTL ? "تحميل لقطات المراقبة" : "Upload Surveillance Footage"}</h2>
                   <p className="text-gray-600 mb-8 max-w-md">{isRTL ? "قم بالسحب والإفلات أو النقر للتحميل. يدعم جميع تنسيقات الصور الرئيسية للتحليل الجنائي." : "Drag and drop or click to upload. Supports all major image formats for forensic analysis."}</p>
                   <button className="px-8 py-3 bg-gradient-to-r from-primary to-green-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1">
@@ -368,10 +392,10 @@ function App() {
                   transition={{ delay: 0.35 }}
                   className="bg-white rounded-xl p-6 shadow-md border border-gray-200"
                 >
-                  <div className="text-xs text-gray-500 uppercase tracking-wider mb-2 font-semibold">
+                  <div className="text-xs text-red-600 uppercase tracking-wider mb-2 font-semibold">
                     {isRTL ? "تطابقات بيومترية" : "Biometric Matches"}
                   </div>
-                  <div className="text-4xl font-black text-gray-900">
+                  <div className="text-4xl font-black text-red-600">
                     {result.modules.biometrics.matches.length}
                   </div>
                 </motion.div>
