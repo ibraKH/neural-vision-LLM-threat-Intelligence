@@ -188,120 +188,76 @@ function App() {
     setResult(null);
     setPredictionResult(null);
 
+    const formData = new FormData();
+    formData.append('file', file);
+
     const steps = [
       t("استخراج البصمات البيومترية...", "Extracting Biometrics..."),
       t("تثليث إحداثيات GPS...", "Triangulating GPS..."),
       t("استعلام شبكة المراقبة الوطنية...", "Querying National CCTV Grid...")
     ];
 
-    // Show animation steps while waiting (Fast mock version)
-    for (let i = 0; i < steps.length; i++) {
-      setAnalysisStep(steps[i]);
-      await new Promise(resolve => setTimeout(resolve, 800));
-    }
+    try {
+      // Start the API request
+      const analyzePromise = fetch('http://localhost:8000/analyze', {
+        method: 'POST',
+        body: formData,
+      }).then(async (res) => {
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || 'Analysis failed');
+        }
+        return res.json();
+      });
 
-    /*
-    const formData = new FormData();
-    formData.append('file', file);
-    // ... fetch logic commented out ...
-    */
+      // Run animation steps (minimum wait time for UX)
+      for (const step of steps) {
+        setAnalysisStep(step);
+        await new Promise(resolve => setTimeout(resolve, 800));
+      }
 
-    // MOCK DATA
-    const MOCK_DATA: AnalysisResult = {
-      pipeline_id: "pipe_12345",
-      timestamp: new Date().toISOString(),
-      target_image: "mock_image.jpg",
-      language: "ar",
-      image_url: URL.createObjectURL(file),
-      report_id: "rep_9876",
-      processed_at: new Date().toISOString(),
-      modules: {
-        biometrics: {
-          meta: { timestamp: new Date().toISOString(), faces_detected: 1 },
-          matches: [{
-            face_id: 1,
-            identity: "known_suspect",
-            info: {
-              name: "خالد عبد العزيز",
-              name_en: "Khalid Abdulaziz",
-              description: "مشتبه به في قضايا أمنية متعددة، مطلوب للتحقيق.",
-              description_en: "Suspect in multiple security cases, wanted for investigation.",
-              location: "الرياض، حي الملز",
-              location_en: "Riyadh, Al-Malaz",
-              is_wanted: true,
-              id_number: "1010101010",
-              phone_number: "0555555555"
-            },
-            confidence: 0.94,
-            box: { x: 100, y: 100, w: 200, h: 200 },
-            face_crop_path: URL.createObjectURL(file)
-          }]
-        },
-        GPS: {
-          filename: file.name,
-          lat: 24.7136,
-          lng: 46.6753,
-          confidence: 0.98
-        },
-        object_detection: {
-          meta: { timestamp: new Date().toISOString(), model: "yolo", output_image: "out.jpg", imgsz: 640 },
-          summary: { total_objects: 3, threat_level: "HIGH" },
-          detections: [
-            { label: "حقيبة مشبوهة", label_en: "Suspicious Bag", confidence: 0.88, box: { x1: 0, y1: 0, x2: 100, y2: 100 }, threat_tag: true }
-          ]
-        },
-        ocr_environment: {
-          meta: { timestamp: new Date().toISOString(), language_mode: "ar" },
-          environment_data: { location_markers: ["شارع الملك فهد"], sensitive_areas: [] },
-          raw_detections: []
-        },
-        cctv_retrieval: {
-          meta: { search_radius: "5km", target_coords: { lat: 24.7136, lng: 46.6753 } },
-          cctv_nodes: [
-            { rank: 1, business_name: "كاميرا برج المملكة", business_name_en: "Kingdom Tower Cam", gps: { lat: 24.711, lng: 46.674 }, distance: "200m" },
-            { rank: 2, business_name: "مراقبة شارع العليا", business_name_en: "Olaya St Surveillance", gps: { lat: 24.715, lng: 46.676 }, distance: "450m" },
-            { rank: 3, business_name: "مدخل الفيصلية", business_name_en: "Faisaliah Entrance", gps: { lat: 24.690, lng: 46.685 }, distance: "1.2km" },
-            { rank: 4, business_name: "كاميرا المرور - التخصصي", business_name_en: "Traffic Cam - Takhassusi", gps: { lat: 24.700, lng: 46.660 }, distance: "1.5km" }
-          ]
-        },
-        reasoning: {
-          language: "ar",
-          incident_id: "INC-2024-001",
-          timestamp: new Date().toISOString(),
-          classification: {
-            priority: "CRITICAL",
-            domain: "SECURITY",
-            type: "WANTED_PERSON",
-            labels: { priority_ar: "حرج جداً", domain_ar: "أمني", type_ar: "شخص مطلوب" }
-          },
-          report: {
-            summary: "تم رصد شخص مطلوب في محيط برج المملكة.",
-            detailed_narrative: "بناءً على تحليل الفيديو والمطابقة البيومترية، تم تحديد المدعو خالد عبد العزيز (مطلوب أمني) في تقاطع طريق الملك فهد مع شارع العليا. الموقع الجغرافي دقيق بنسبة 98%. يظهر المشتبه به وهو يحمل حقيبة، مما يستدعي رفع مستوى الحذر. توصي الأنظمة بتوجيه أقرب دورية للتحقق.",
-            visual_evidence: []
-          },
-          report_en: {
-            summary: "Wanted person detected near Kingdom Tower.",
-            detailed_narrative: "Based on video analysis and biometric matching, simple suspect Khalid Abdulaziz (Wanted) was identified at King Fahd Rd / Olaya St interaction. GPS location is 98% accurate. Suspect appears to be carrying a bag, warranting increased caution. Systems recommend directing nearest patrol for verification.",
-            visual_evidence: []
-          },
-          action_plan: {
-            recommended_unit: "الدوريات الأمنية - الفرقة 4",
-            nearest_cctv: "كاميرا برج المملكة (C-01)",
-            notes: "الاقتراب بحذر"
-          },
-          action_plan_en: {
-            recommended_unit: "Security Patrols - Unit 4",
-            nearest_cctv: "Kingdom Tower Cam (C-01)",
-            notes: "Approach with caution"
-          }
+      // Wait for the actual result
+      const data = await analyzePromise;
+
+      console.log("Backend Response:", data);
+
+      // Transform backend data to match frontend strict types if necessary
+      // For now, we assume the backend structure aligns enough or we patch it lightly
+      // The backend 'ocr_environment' returns 'text' list, frontend expects 'raw_detections'
+      // We might need to map it if strictly typed usage fails.
+
+      if (data.modules && data.modules.ocr_environment && Array.isArray(data.modules.ocr_environment.text)) {
+        // Map 'text' array to 'raw_detections' if missing
+        if (!data.modules.ocr_environment.raw_detections) {
+          data.modules.ocr_environment.raw_detections = data.modules.ocr_environment.text.map((txt: string) => ({
+            text: txt,
+            confidence: 1.0,
+            tag: "text"
+          }));
         }
       }
-    };
 
-    console.log("Using MOCK Response", MOCK_DATA);
-    setResult(MOCK_DATA);
-    setIsAnalyzing(false);
-    setAnalysisStep('');
+      // Fix for CCTV Retrieval: Backend returns 'cameras', frontend expects 'cctv_nodes'
+      if (data.modules && data.modules.cctv_retrieval && Array.isArray(data.modules.cctv_retrieval.cameras)) {
+        if (!data.modules.cctv_retrieval.cctv_nodes) {
+          data.modules.cctv_retrieval.cctv_nodes = data.modules.cctv_retrieval.cameras.map((cam: any, index: number) => ({
+            rank: index + 1,
+            business_name: cam.name || "Unknown Camera",
+            gps: { lat: cam.lat, lng: cam.lng },
+            distance: cam.distance || "N/A"
+          }));
+        }
+      }
+
+
+      setResult(data);
+    } catch (error) {
+      console.error("Analysis Error:", error);
+      alert(isRTL ? "حدث خطأ أثناء التحليل" : "An error occurred during analysis");
+    } finally {
+      setIsAnalyzing(false);
+      setAnalysisStep('');
+    }
   };
 
   const toggleLanguage = () => {
